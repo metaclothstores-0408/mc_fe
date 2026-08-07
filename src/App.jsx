@@ -15,6 +15,9 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";
 import { getCart, getUser, saveCart } from "./lib/storage";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminAvatars from "./pages/admin/AdminAvatars";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App(){
  const [cart,setCart]=useState(getCart()); const [user,setUser]=useState(getUser()); const [toast,setToast]=useState("");
@@ -40,7 +43,31 @@ export default function App(){
    <Route path="/signup" element={<Auth setUser={setUser}/>}/>
    <Route path="/login" element={<Auth setUser={setUser}/>}/>
    <Route path="/admin/login" element={<AdminLogin setUser={setUser}/>}/>
-   <Route path="/admin" element={<Admin/>}/>
+   <Route
+  path="/admin"
+  element={
+    <ProtectedRoute adminOnly>
+      <Admin />
+    </ProtectedRoute>
+  }
+/>
    <Route path="*" element={<Home/>}/>
+   <Route
+  path="/admin/products"
+  element={
+    <ProtectedRoute adminOnly>
+      <AdminProducts />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/avatars"
+  element={
+    <ProtectedRoute adminOnly>
+      <AdminAvatars />
+    </ProtectedRoute>
+  }
+/>
  </Routes></Layout><Toast message={toast} onClose={()=>setToast("")}/></BrowserRouter>;
 }
