@@ -133,6 +133,20 @@ export const api = {
 
   getMe: () =>
     request("/api/v1/me"),
+
+  updateProfile: (data) =>
+  request("/api/v1/me/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  }),
+
+getAdminUsers: () =>
+  request("/api/v1/admin/users"),
+
+deleteAdminUser: (id) =>
+  request(`/api/v1/admin/users/${id}`, {
+    method: "DELETE",
+  }),
 };
 
 const API_BASE_URL =

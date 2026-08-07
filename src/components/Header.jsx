@@ -23,7 +23,7 @@ export default function Header({ cartCount = 0, user }) {
           ))}
         </nav>
         <div className="flex items-center gap-1">
-          <Link to={user ? "/profile" : "/signin"} className="mc-btn-ghost hidden sm:inline-flex"><UserRound size={18}/>{user?.full_name || "Sign in"}</Link>
+          <Link to={user ? "/profile" : "/signin"} className="mc-btn-ghost hidden sm:inline-flex"><UserRound size={18}/>{user?.fullName || user?.full_name || "Sign in"}</Link>
           <Link to="/cart" className="relative mc-btn-ghost" aria-label="Shopping bag">
             <ShoppingBag size={20}/>
             {cartCount > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-violet-600 px-1 text-[10px] font-bold">{cartCount}</span>}

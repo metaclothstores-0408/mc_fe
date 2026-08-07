@@ -8,13 +8,53 @@ import {
   Plus,
   ArrowRight,
   LogOut,
+  Users,
+Trash2,
+RefreshCw,
 } from "lucide-react";
 
 import { getOrders, money, logoutUser } from "../lib/storage";
 import { products } from "../data/mock";
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
 
 export default function Admin() {
+
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+
+  const loadUsers = async () => {
+
+    try {
+
+      setUsersLoading(true);
+      setUsersError("");
+
+      const data = await api.getAdminUsers();
+
+      setUsers(data || []);
+
+    } catch (err) {
+
+      setUsersError(
+        err.message ||
+        "Unable to load users."
+      );
+
+    } finally {
+
+      setUsersLoading(false);
+
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
   const navigate = useNavigate();
 
   const orders = getOrders();
@@ -38,6 +78,43 @@ export default function Admin() {
   const logout = () => {
     logoutUser();
     navigate("/admin/login");
+  };
+
+
+  const deleteUser = async (user) => {
+    const label =
+      user.email ||
+      user.fullName ||
+      `User #${user.id}`;
+
+    if (
+      !window.confirm(
+        `Delete ${label}? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingId(user.id);
+
+      await api.deleteAdminUser(user.id);
+
+      // Remove the deleted user immediately from the UI
+      setUsers((currentUsers) =>
+        currentUsers.filter(
+          (currentUser) => currentUser.id !== user.id
+        )
+      );
+
+    } catch (err) {
+      window.alert(
+        err.message ||
+        "Unable to delete user."
+      );
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -182,6 +259,186 @@ export default function Admin() {
           </Link>
 
         </div>
+
+        <div className="mt-6 rounded-2xl border border-white/10 bg-[#18181B] p-5">
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+
+          <div className="flex items-center gap-3">
+
+            <Users className="text-violet-400" />
+
+            <div>
+
+              <h2 className="font-semibold">
+                Customer Users
+              </h2>
+
+              <p className="mt-1 text-xs text-zinc-600">
+                Manage customer accounts for development and operations.
+              </p>
+
+            </div>
+
+          </div>
+
+          <button
+            onClick={loadUsers}
+            disabled={usersLoading}
+            className="mc-btn-ghost"
+          >
+
+            <RefreshCw
+              size={15}
+              className={
+                usersLoading
+                  ? "animate-spin"
+                  : ""
+              }
+            />
+
+            Refresh
+
+          </button>
+
+        </div>
+
+        {usersError && (
+          <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {usersError}
+          </div>
+        )}
+
+        {usersLoading ? (
+
+          <p className="py-10 text-center text-sm text-zinc-600">
+            Loading users...
+          </p>
+
+        ) : users.length === 0 ? (
+
+          <p className="py-10 text-center text-sm text-zinc-600">
+            No customer users found.
+          </p>
+
+        ) : (
+
+          <div className="mt-5 overflow-x-auto">
+
+            <table className="w-full min-w-[850px] text-left text-sm">
+
+              <thead className="text-xs uppercase text-zinc-600">
+
+                <tr>
+
+                  <th className="pb-3">
+                    ID
+                  </th>
+
+                  <th className="pb-3">
+                    Name
+                  </th>
+
+                  <th className="pb-3">
+                    Email
+                  </th>
+
+                  <th className="pb-3">
+                    Phone
+                  </th>
+
+                  <th className="pb-3">
+                    Provider
+                  </th>
+
+                  <th className="pb-3">
+                    Created
+                  </th>
+
+                  <th className="pb-3 text-right">
+                    Action
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {users.map((user) => (
+
+                  <tr
+                    key={user.id}
+                    className="border-t border-white/5"
+                  >
+
+                    <td className="py-4 text-zinc-500">
+                      {user.id}
+                    </td>
+
+                    <td className="py-4 font-semibold">
+                      {user.fullName || "—"}
+                    </td>
+
+                    <td className="py-4 text-zinc-400">
+                      {user.email || "—"}
+                    </td>
+
+                    <td className="py-4 text-zinc-400">
+                      {user.phoneNumber || "—"}
+                    </td>
+
+                    <td className="py-4">
+
+                      <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-xs text-violet-300">
+                        {user.authProvider || "—"}
+                      </span>
+
+                    </td>
+
+                    <td className="py-4 text-zinc-500">
+
+                      {user.createdAt
+                        ? new Date(
+                            user.createdAt
+                          ).toLocaleDateString("en-IN")
+                        : "—"}
+
+                    </td>
+
+                    <td className="py-4 text-right">
+
+                      <button
+                        onClick={() => deleteUser(user)}
+                        disabled={
+                          deletingId === user.id
+                        }
+                        className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                      >
+
+                        <Trash2 size={14} />
+
+                        {deletingId === user.id
+                          ? "Deleting..."
+                          : "Delete"}
+
+                      </button>
+
+                    </td>
+
+                  </tr>
+
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        )}
+
+      </div>
 
 
         {/* STATISTICS */}

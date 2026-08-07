@@ -55,9 +55,18 @@ export default function GoogleOAuthCallback({
           response.user
         );
 
-        navigate("/", {
-          replace: true,
-        });
+        const profileIncomplete =
+        !response.user?.fullName?.trim() ||
+        !response.user?.phoneNumber?.trim();
+
+        navigate(
+        profileIncomplete
+            ? "/profile?setup=1"
+            : "/",
+        {
+            replace: true,
+        }
+        );
 
       } catch (err) {
 
