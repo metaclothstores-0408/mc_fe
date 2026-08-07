@@ -134,3 +134,41 @@ export const api = {
   getMe: () =>
     request("/api/v1/me"),
 };
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+export async function getGoogleOAuthSession() {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/auth/google/session`,
+    {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    }
+  );
+
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        "Unable to complete Google authentication."
+    );
+  }
+
+  return data;
+}
+
+export function startGoogleOAuth() {
+  window.location.href =
+    `${API_BASE_URL}/api/v1/auth/google/start`;
+}

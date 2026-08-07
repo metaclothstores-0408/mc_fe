@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Mail, Phone, ShieldCheck, Sparkles } from "lucide-react";
 import { saveUser } from "../lib/storage";
+import { startGoogleOAuth } from "../lib/api";
 
 export default function Auth({ setUser }) {
   const location = useLocation();
@@ -59,11 +60,19 @@ export default function Auth({ setUser }) {
               <button onClick={() => setMethod("phone")} className={`rounded-lg py-2.5 text-sm ${method === "phone" ? "bg-white/10 text-white" : "text-zinc-500"}`}>Phone OTP</button>
             </div>
 
-            {method === "google" ? <>
-              {isSignup && <input className="mc-input mt-4" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email" />}
-              {!isSignup && <input className="mc-input mt-4" value={email} onChange={e => setEmail(e.target.value)} placeholder="Google email" type="email" />}
-              <button onClick={finish} className="mc-btn-primary mt-3 w-full">Continue with Google <ArrowRight size={17}/></button>
-            </> : <>
+            {method === "google" ? (
+            <>
+              <button
+                onClick={startGoogleOAuth}
+                className="mc-btn-primary mt-4 w-full"
+                type="button"
+              >
+                Continue with Google
+                <ArrowRight size={17} />
+              </button>
+            </>
+          ) : 
+            <>
               <input className="mc-input mt-4" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" inputMode="tel" />
               {!otpSent ? <button onClick={() => setOtpSent(true)} className="mc-btn-primary mt-3 w-full"><Phone size={17}/> Send OTP</button> : <>
                 <input className="mc-input mt-3" placeholder="Enter 6-digit OTP" inputMode="numeric" />
@@ -71,7 +80,13 @@ export default function Auth({ setUser }) {
               </>}
             </>}
 
-            <div className="mt-6 flex gap-2 rounded-xl border border-white/5 bg-white/[.02] p-3 text-xs leading-5 text-zinc-600"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-zinc-500"/> Frontend-only authentication for Phase 1. Google OAuth and SMS OTP will connect to Spring Boot later.</div>
+            <div className="mt-6 flex gap-2 rounded-xl border border-white/5 bg-white/[.02] p-3 text-xs leading-5 text-zinc-600">
+  <ShieldCheck
+    size={15}
+    className="mt-0.5 shrink-0 text-zinc-500"
+  />
+  Secure authentication powered by MetaCloth and Google OAuth.
+</div>
             <div className="mt-8 text-center text-xs text-zinc-600"><Sparkles size={13} className="mr-1 inline text-violet-500"/> Admins use the separate <Link className="text-violet-400 hover:text-violet-300" to="/admin/login">Admin Control Desk</Link>.</div>
           </div>
         </section>
