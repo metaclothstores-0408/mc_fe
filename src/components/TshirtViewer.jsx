@@ -64,7 +64,7 @@ function wrapText(ctx, str, x, y, maxWidth, lineHeight) {
   }
 }
 
-function ShirtModel({ color, avatar, text, font, fontSize, zone }) {
+function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale }) {
   const { scene } = useGLTF(MODEL_URL);
   const cloned = useMemo(() => scene.clone(true), [scene]);
 
@@ -245,13 +245,16 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone }) {
     const n = tf.position[2] >= 0 ? 0.18 : -0.18;
     return [tf.position[0], tf.position[1], tf.position[2] + n];
   }, [tf]);
+  // printScale: DTF size multiplier (0.4..4.0), isolated — only scales decal planes, never garment/camera
+  // shirt centred span ~23.8 ( -11.9→11.9 ). CHEST base 8.5 *0.78*3.6≈23.9 = seam-to-seam, 4.0≈26.5 = boxy bleed
+  const ps = Math.max(0.4, Math.min(4.0, Number(printScale ?? 1) || 1));
   const hasTextTex = !!textTex;
   const hasAvatar = !!avatarTex;
   const hasText = !!(text && String(text).trim().length > 0);
-  // Avatar above, text below — layout in local decal space, stays glued on rotate
-  const avatarPlane = hasText ? tf.size * 0.58 : tf.size * 0.78;
-  // text plane size covers the 1024 canvas — shrink it so the glyph size is controlled by px above
-  const textPlane = tf.size * 0.88;
+  // Avatar above, text below — layout in local decal space, stays glued on rotate; scaled by printScale
+  const avatarPlane = (hasText ? tf.size * 0.58 : tf.size * 0.78) * ps;
+  // text plane size covers the 1024 canvas — shrink it so the glyph size is controlled by px above + size scaling
+  const textPlane = tf.size * 0.88 * ps;
 
   return (
     <group scale={scale} position={[0, 0.1, 0]}>
@@ -290,7 +293,7 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone }) {
   );
 }
 
-export default function TshirtViewer({ color, avatar, zone, text, font, fontSize = 96 }) {
+export default function TshirtViewer({ color, avatar, zone, text, font, fontSize = 96, printScale = 1 }) {
   return (
     <div className="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[1.4rem] bg-[radial-gradient(circle_at_50%_28%,#fafafa_0%,#e4e4e7_45%,#a1a1aa_100%)] shadow-[inset_0_0_120px_rgba(0,0,0,.12)]">
       <Canvas
@@ -303,7 +306,7 @@ export default function TshirtViewer({ color, avatar, zone, text, font, fontSize
         <directionalLight position={[3, 5, 4]} intensity={1.2} />
         <directionalLight position={[-4, 2, 2]} intensity={0.5} />
         <Suspense fallback={null}>
-          <ShirtModel color={color} avatar={avatar} text={text} font={font} fontSize={fontSize} zone={zone} />
+          <ShirtModel color={color} avatar={avatar} text={text} font={font} fontSize={fontSize} zone={zone} printScale={printScale} />
           <ContactShadows
             position={[0, -0.6, 0]}
             opacity={0.45}

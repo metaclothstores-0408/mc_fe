@@ -147,6 +147,45 @@ deleteAdminUser: (id) =>
   request(`/api/v1/admin/users/${id}`, {
     method: "DELETE",
   }),
+
+  // =========================
+  // ORDERS (incl. DTF payload)
+  // =========================
+  createOrder: (data) =>
+    request("/api/v1/orders", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  myOrders: () => request("/api/v1/orders/my-orders"),
+
+  trackOrder: (id) => request(`/api/v1/orders/${id}/track`),
+
+  // DTF production asset (generated async server-side)
+  getDtfAsset: (orderId, itemId) =>
+    request(`/api/v1/orders/${orderId}/items/${itemId}/dtf-asset`),
+
+  getDtfFileUrl: (orderId, itemId) =>
+    `${API_BASE}/api/v1/orders/${orderId}/items/${itemId}/dtf-file`,
+
+  // On-demand high-res render — isolated middleware pipeline
+  // Returns a Blob; caller triggers native download.
+  downloadDtfPng: async (payload) => {
+    const token = localStorage.getItem("accessToken");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/api/v1/dtf/download`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let msg = "DTF render failed";
+      try { const j = await res.json(); msg = j.message || j.error || msg; } catch (_) {}
+      throw new Error(msg);
+    }
+    return await res.blob();
+  },
 };
 
 const API_BASE_URL =

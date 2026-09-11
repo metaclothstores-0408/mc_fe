@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, LockKeyhole } from "lucide-react";
 import { getOrders, makeId, money, saveOrders } from "../lib/storage";
+import { api } from "../lib/api";
 
 export default function Checkout({cart, clearCart, notify}) {
   const navigate=useNavigate();
@@ -9,13 +10,23 @@ export default function Checkout({cart, clearCart, notify}) {
   const [placing,setPlacing]=useState(false);
   const total=cart.reduce((s,i)=>s+i.price*i.quantity,0);
   const change=e=>setForm({...form,[e.target.name]:e.target.value});
-  const place=()=>{
+  function buildPayload(){return {shippingName:form.name,shippingPhone:form.phone,shippingAddressLine:form.address,city:form.city,postalCode:form.postalCode,items:cart.map(i=>{const dtf=i.dtf_print_parameters||null; const cfg={zone:i.zone||null,customText:i.customText||null,customFont:i.customFont||null,customFontSize:i.customFontSize||null,garmentType:i.garmentType||null,color:i.color||null}; if(dtf) cfg.dtf_print_parameters=dtf; return {productVariantId:i.productVariantId||i.variantId||401, avatarId: typeof i.avatarId==="number"?i.avatarId:null, quantity:i.quantity||1, unitPrice:i.price, printConfigJson: JSON.stringify(cfg), previewRenderUrl:i.image||i.previewRenderUrl||null};}) };}
+  const place=async ()=>{
     if(!cart.length)return;
     if(Object.values(form).some(v=>!v.trim())){notify("Please complete all shipping fields");return;}
     setPlacing(true);
+    const payload=buildPayload();
+    const token=localStorage.getItem("accessToken");
+    if(token){
+      try{
+        const res=await api.createOrder(payload);
+        const order={id:String(res.id),orderNumber:res.orderNumber,userId:"api-user",totalAmount:Number(res.totalAmount),status:res.status,shipping:form,items:cart,createdAt:new Date().toISOString(),apiResponse:res};
+        saveOrders([order,...getOrders()]); clearCart(); navigate(`/orders/${order.id}`); notify("Order placed — DTF production started"); return;
+      }catch(e){ console.warn("Backend order failed, local fallback:", e.message); }
+    }
     setTimeout(()=>{
-      const order={id:makeId("MC"),orderNumber:`MC${Date.now().toString().slice(-8)}`,userId:"local-user",totalAmount:total,status:"PLACED",shipping:form,items:cart,createdAt:new Date().toISOString()};
-      saveOrders([order,...getOrders()]); clearCart(); navigate(`/orders/${order.id}`);
+      const order={id:makeId("MC"),orderNumber:`MC${Date.now().toString().slice(-8)}`,userId:"local-user",totalAmount:total,status:"PLACED",shipping:form,items:cart,createdAt:new Date().toISOString(), dtfPayload: payload};
+      saveOrders([order,...getOrders()]); clearCart(); navigate(`/orders/${order.id}`); setPlacing(false);
     },500);
   };
   if(!cart.length)return <div className="mc-container py-20 text-center"><h1 className="text-2xl font-bold">Nothing to checkout.</h1></div>;

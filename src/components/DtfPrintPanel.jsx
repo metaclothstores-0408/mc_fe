@@ -1,0 +1,130 @@
+import { useMemo, useState } from "react";
+import { Download, Loader2 } from "lucide-react";
+import { SHEET_PRESETS, computePrintWidthInches, hexToHue, hueToHex, validateHex } from "../lib/dtfProcessor";
+import { api } from "../lib/api";
+export default function DtfPrintPanel(p){
+  const hue = useMemo(()=> hexToHue(p.value.stripColorHex||"#ffffff"),[p.value.stripColorHex]);
+  const valid = validateHex(p.value.stripColorHex);
+  const upd=(o)=>p.onChange(Object.assign({},p.value,o));
+  const scale=p.value.printScale??1;
+  const sheetId=p.value.selectedSheetPreset||"A3";
+  const sheet=SHEET_PRESETS[sheetId]||SHEET_PRESETS.A3;
+  const wIn=computePrintWidthInches(sheetId, scale);
+  // download state — isolated to this panel
+  const [downloading,setDownloading]=useState(false);
+  const [downErr,setDownErr]=useState("");
+  async function handleDownload(){
+    if(!p.hasSource){ setDownErr("Select an avatar or upload an image first."); return; }
+    const maybeBlob = String(p.rawSourceUrl||"");
+    if(maybeBlob.startsWith("blob:") && !p.uploadedDataUrl && !p.previewDataUrl){
+      setDownErr("This image is a browser-local blob URL. Please re-upload the file (it will be sent as a data URL) and try again.");
+      return;
+    }
+    setDownErr(""); setDownloading(true);
+    try{
+      const srcCandidate = p.rawSourceUrl || p.uploadedDataUrl || p.previewDataUrl || p.previewUrl || null;
+      const effectiveSource = (srcCandidate && String(srcCandidate).startsWith("blob:")) ? (p.uploadedDataUrl || p.previewDataUrl || p.previewUrl || srcCandidate) : srcCandidate;
+      const payload={
+        original_asset_url: effectiveSource,
+        dtf_print_parameters:{
+          selected_sheet_preset: sheetId,
+          print_width_inches: wIn,
+          strip_color_hex: p.value.stripColorHex,
+          strip_sensitivity: p.value.stripSensitivity,
+          halftone_density: p.value.halftoneDensity,
+          print_scale: scale,
+          sheet_width_inches: sheet.widthInches,
+          sheet_height_inches: sheet.heightInches,
+          preview_data_url: p.previewDataUrl || p.previewUrl || null,
+          original_asset_url: p.uploadedDataUrl || p.rawSourceUrl || null
+        }
+      };
+      const blob=await api.downloadDtfPng(payload);
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url; a.download="print_ready_dtf.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    }catch(e){ setDownErr(e.message||"Download failed"); }
+    finally{ setDownloading(false); }
+  }
+  return (
+    <section className="mc-card overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.02] px-5 py-4">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-violet-500/15 text-[10px] font-bold text-violet-300">DTF</span>
+        <div><h2 className="text-sm font-semibold leading-none">Print Quality Settings</h2><p className="mt-1 text-[11px] text-zinc-500">Real-time preview - non-destructive</p></div>
+        <span className="ml-auto rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-300">MIDDLEWARE</span>
+      </div>
+      <div className="space-y-5 p-5">
+        {/* Sheet size — garment-invariant physical frame */}
+        <div>
+          <label className="mb-2 block text-xs font-semibold text-zinc-200">Print Sheet Size</label>
+          <select value={sheetId} onChange={e=>upd({selectedSheetPreset:e.target.value})} className="mc-input w-full">
+            <option value="A4">A4 Sheet (Pocket / Small Print) — 8.3 × 11.7″ (2490×3510 @300 DPI)</option>
+            <option value="A3">A3 Sheet (Standard Chest / Back Print) — 11.7 × 16.5″ (3510×4950 @300 DPI)</option>
+          </select>
+          <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span className="text-[11px] text-zinc-400">Sheet frame: <b className="text-zinc-200">{sheet.widthInches} × {sheet.heightInches}″</b> · Print width <b className="text-violet-300">{wIn}″</b> ({Math.round(wIn*300)} px @300 DPI)</span>
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-500">Garment-invariant: S–XXL press the same physical transfer. {Math.round(scale*100)}% × {sheet.widthInches}″ → {wIn}″</p>
+        </div>
+
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-2.5">
+          <p className="text-[11px] text-zinc-400">{p.hasSource ? ("Processing: "+p.sourceLabel) : "Select avatar or upload image."}</p>
+          <div className="mt-2 flex gap-2">
+            <label className="cursor-pointer rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/10">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e=>{const f=e.target.files&&e.target.files[0]; if(f) p.onUpload(f); e.target.value="";}} /></label>
+            {p.uploadedUrl && <button type="button" onClick={p.onClearUpload} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400 hover:text-white">Clear</button>}
+          </div>
+          {p.hasSource && p.previewUrl && (
+            <div className="mt-3 flex items-center gap-3">
+              <div className="h-16 w-16 overflow-hidden rounded-lg border border-white/10 bg-zinc-900" style={{backgroundImage:"conic-gradient(#3f3f46 25%,transparent 0 50%,#3f3f46 0 75%,transparent 0)",backgroundSize:"10px 10px"}}><img src={p.previewUrl} alt="preview" className="h-full w-full object-contain" /></div>
+              <div className="text-xs text-zinc-400"><div className="font-medium text-zinc-200">Live preview</div><div className="text-[11px]">Transparent PNG - 3D texture · {Math.round(scale*100)}% · {sheetId} @ {wIn}" ({Math.round(wIn*300)}px @300DPI)</div></div>
+              <span className="ml-auto h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="mb-2 block text-xs font-semibold text-zinc-200">Remove Background Color</label>
+          <input type="range" min={0} max={360} value={hue} onChange={e=>upd({stripColorHex:hueToHex(Number(e.target.value))})} className="h-3 w-full appearance-none rounded-full" style={{background:"linear-gradient(90deg,#ff0000 0%,#ffff00 17%,#00ff00 33%,#00ffff 50%,#0000ff 67%,#ff00ff 83%,#ff0000 100%)"}} aria-label="gradient" />
+          <div className="mt-3 flex items-center gap-2">
+            <input type="color" value={valid?p.value.stripColorHex:"#ffffff"} onChange={e=>upd({stripColorHex:e.target.value})} className="h-10 w-10 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1" />
+            <div className="flex-1"><div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">#</span><input value={(p.value.stripColorHex||"").replace(/^#/,"")} onChange={e=>{const v=e.target.value.replace(/[^0-9a-fA-F]/g,"").slice(0,6); upd({stripColorHex:"#"+v});}} onBlur={e=>{let raw=e.target.value.trim(); let h=raw.startsWith("#")?"#"+raw:"#"+raw; if(!validateHex(h)) upd({stripColorHex:"#ffffff"});}} placeholder="ffffff" spellCheck={false} className="mc-input pl-7 uppercase" /></div></div>
+            <span className="grid h-10 w-10 place-items-center rounded-xl border text-[11px] font-bold" style={{background:valid?p.value.stripColorHex:"#18181b"}}>Aa</span>
+          </div>
+          <p className="mt-2 text-[11px] text-zinc-500">Matching pixels become transparent on hidden canvas.</p>
+        </div>
+        <div>
+          <label className="mb-2 flex justify-between text-xs font-semibold text-zinc-200"><span>Color Removal Sensitivity</span><span className="rounded bg-white/5 px-2 py-0.5 text-[11px] font-bold text-violet-300">{p.value.stripSensitivity}</span></label>
+          <input type="range" min={0} max={100} step={1} value={p.value.stripSensitivity} onChange={e=>upd({stripSensitivity:Number(e.target.value)})} className="h-1 w-full appearance-none rounded-full bg-white/10 accent-violet-500" />
+          <div className="mt-1 flex justify-between text-[10px] text-zinc-500"><span>Tight</span><span>Aggressive</span></div>
+        </div>
+        <div>
+          <label className="mb-2 flex justify-between text-xs font-semibold text-zinc-200"><span>Print Size</span><span className="rounded bg-white/5 px-2 py-0.5 text-[11px] font-bold text-violet-300">{Math.round(scale*100)}%</span></label>
+          <input type="range" min={0.4} max={4.0} step={0.05} value={scale} onChange={e=>upd({printScale:Number(e.target.value)})} className="h-1 w-full appearance-none rounded-full bg-white/10 accent-violet-500" />
+          <div className="mt-1 flex justify-between text-[10px] text-zinc-500"><span>40% — small chest</span><span>400% — full boxy end-to-end</span></div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[0.6,1,2.0,3.6].map(v=>(
+              <button key={v} type="button" onClick={()=>upd({printScale:v})} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${Math.abs(scale-v)<0.04?'border-violet-500/40 bg-violet-500/15 text-violet-200':'border-white/10 bg-white/5 text-zinc-400 hover:text-white'}`}>{v===0.6?'XS':v===1?'M':v===2.0?'L':'BOXY'} · {Math.round(v*100)}%</button>
+            ))}
+            <span className="ml-auto self-center text-[10px] text-zinc-500">BOXY seam→seam</span>
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-500">Sheet A4 @100% = 4.15″ / A3 @100% = 5.85″ — scale × sheet = final print width.</p>
+        </div>
+        <div>
+          <label className="mb-2 flex justify-between text-xs font-semibold text-zinc-200"><span>Print Softness / Breathability</span><span className="rounded bg-white/5 px-2 py-0.5 text-[11px] font-bold text-violet-300">{p.value.halftoneDensity}</span></label>
+          <input type="range" min={0} max={100} step={1} value={p.value.halftoneDensity} onChange={e=>upd({halftoneDensity:Number(e.target.value)})} className="h-1 w-full appearance-none rounded-full bg-white/10 accent-violet-500" />
+          <div className="mt-1 flex justify-between text-[10px] text-zinc-500"><span>Solid</span><span>Max breathable</span></div>
+          <p className="mt-2 text-[11px] text-zinc-500">Bayer 4x4 halftone over gradients. 0 solid, 100 dot preview.</p>
+        </div>
+        <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200/90">Preview client-side only. 300 DPI PNG generated server-side from original at exact {wIn}″ ({Math.round(wIn*300)} px). See sheet reference above.</p>
+        {/* Download trigger — isolated middleware call */}
+        <button type="button" onClick={handleDownload} disabled={downloading || !p.hasSource} className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50">
+          {downloading ? <><Loader2 size={16} className="animate-spin"/> Generating 300 DPI PNG…</> : <><Download size={16}/> Download Print-Ready PNG</>}
+        </button>
+        {downErr && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">{downErr}</p>}
+        {!p.hasSource && <p className="text-center text-[11px] text-zinc-500">Add image/avatar first to enable download.</p>}
+      </div>
+    </section>
+  );
+}
