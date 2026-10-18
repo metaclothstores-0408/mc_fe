@@ -37,13 +37,13 @@
         B&D
       </div>
       <span class="text-xs font-semibold tracking-wider uppercase text-zinc-400">
-        Interactive Design Prototype · <span class="text-white font-mono">v1.0 (Monochrome Atelier)</span>
+        Interactive Design Prototype · <span class="text-white font-mono">v1.1 (Collapsible DTF Quality)</span>
       </span>
     </div>
     <div class="flex items-center gap-3 text-xs">
       <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-400 text-[11px] font-medium">
         <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        Ready to Review
+        Quality Controls Collapsible
       </span>
       <button onclick="resetPrototype()" class="rounded-lg border border-white/15 px-2.5 py-1 text-zinc-400 hover:text-white hover:border-white/30 transition">
         Reset State
@@ -234,16 +234,101 @@
             </div>
           </div>
 
-          <!-- Upload Dropzone (Simulated) -->
+          <!-- Upload Dropzone (with Auto-Map + Hidden-by-Default Quality Controls) -->
           <div id="section-upload" class="hidden space-y-3">
-            <label class="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 p-6 text-center cursor-pointer hover:border-white/40 transition">
-              <svg class="h-6 w-6 text-zinc-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span class="text-xs font-semibold text-white">Upload Your Artwork or Logo</span>
-              <span class="text-[11px] text-zinc-500 mt-1">Automatic transparent background removal</span>
-              <input type="file" accept="image/*" class="hidden" onchange="handleSimulatedUpload(event)">
-            </label>
+            
+            <!-- Upload Box (Shown when no upload) -->
+            <div id="upload-box">
+              <label class="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 p-6 text-center cursor-pointer hover:border-white/40 transition">
+                <svg class="h-6 w-6 text-zinc-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span class="text-xs font-semibold text-white">Upload Your Artwork or Logo</span>
+                <span class="text-[11px] text-zinc-500 mt-1">Automatic transparent background knockout · Chest DTF</span>
+                <input type="file" accept="image/*" class="hidden" onchange="handleSimulatedUpload(event)">
+              </label>
+            </div>
+
+            <!-- Upload Success Info (Appears after upload) -->
+            <div id="upload-success-bar" class="hidden rounded-xl border border-white/10 bg-white/5 p-3 flex items-center justify-between">
+              <div class="flex items-center gap-3 min-w-0">
+                <div id="upload-thumb" class="h-10 w-10 shrink-0 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden">
+                  <img id="thumb-img" src="" class="h-full w-full object-contain" />
+                </div>
+                <div class="min-w-0">
+                  <div id="upload-filename" class="text-xs font-semibold text-white truncate max-w-[160px]">custom_graphic.png</div>
+                  <div class="text-[11px] text-emerald-400 flex items-center gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Mapped to Chest DTF
+                  </div>
+                </div>
+              </div>
+              <button onclick="clearSimulatedUpload()" class="text-xs text-zinc-400 hover:text-white underline decoration-white/20 underline-offset-4">Replace</button>
+            </div>
+
+            <!-- Collapsible Advanced Quality & DTF Controls (HIDDEN BY DEFAULT) -->
+            <div id="advanced-dtf-wrapper" class="hidden border border-white/10 rounded-xl overflow-hidden bg-black/40">
+              <button onclick="toggleDtfSettings()" class="w-full flex items-center justify-between p-3.5 text-left text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 transition">
+                <span class="flex items-center gap-2">
+                  <svg class="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Advanced Print Quality Controls</span>
+                </span>
+                <span id="dtf-chevron" class="text-xs text-zinc-500 font-mono">Expand ▼</span>
+              </button>
+
+              <!-- Collapsible Content (Closed by default) -->
+              <div id="dtf-settings-content" class="hidden p-4 space-y-4 border-t border-white/10 bg-[#09090c]">
+                
+                <!-- Background Removal Tolerance -->
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1.5">
+                    <span class="text-zinc-400">Background Knockout Color</span>
+                    <span id="label-knockout" class="text-white font-mono">White (#FFFFFF)</span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setKnockoutColor('#ffffff', 'White (#FFFFFF)')" id="btn-ko-white" class="rounded-lg border border-white bg-white/15 py-1.5 text-center text-xs font-medium text-white">White</button>
+                    <button onclick="setKnockoutColor('#000000', 'Black (#000000)')" id="btn-ko-black" class="rounded-lg border border-white/10 bg-white/5 py-1.5 text-center text-xs font-medium text-zinc-400 hover:text-white">Black</button>
+                    <button onclick="setKnockoutColor('none', 'Keep All')" id="btn-ko-none" class="rounded-lg border border-white/10 bg-white/5 py-1.5 text-center text-xs font-medium text-zinc-400 hover:text-white">Keep All</button>
+                  </div>
+                </div>
+
+                <!-- Sensitivity Slider -->
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-zinc-400">Knockout Sensitivity</span>
+                    <span id="val-sensitivity" class="text-white font-mono">30%</span>
+                  </div>
+                  <input type="range" min="5" max="80" value="30" oninput="document.getElementById('val-sensitivity').innerText = this.value + '%'" class="w-full accent-white h-1 bg-white/10 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Halftone Density -->
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-zinc-400">Halftone Vintage Grain</span>
+                    <span id="val-halftone" class="text-white font-mono">Crisp (0%)</span>
+                  </div>
+                  <input type="range" min="0" max="60" value="0" oninput="document.getElementById('val-halftone').innerText = this.value === '0' ? 'Crisp (0%)' : this.value + '%'" class="w-full accent-white h-1 bg-white/10 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Sheet Preset & Download -->
+                <div class="pt-2 border-t border-white/10 flex items-center justify-between">
+                  <div>
+                    <span class="text-[11px] text-zinc-400 block">Transfer Sheet</span>
+                    <span class="text-xs font-bold text-white">A3 (11.7″ × 16.5″)</span>
+                  </div>
+                  <button onclick="downloadDtfPreview()" class="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20 transition flex items-center gap-1.5">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download DTF (300 DPI)</span>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -341,7 +426,9 @@
       dropTitle: 'VOID ARCHIVE 01',
       selectedSize: 'L',
       chestSize: 42,
-      bagCount: 0
+      bagCount: 0,
+      uploadedImageUrl: null,
+      isDtfSettingsOpen: false
     };
 
     function setShade(shade) {
@@ -433,10 +520,69 @@
       const file = event.target.files[0];
       if (file) {
         const url = URL.createObjectURL(file);
+        state.uploadedImageUrl = url;
+        
+        // 1. Map directly to chest DTF
         const graphic = document.getElementById('graphic-art');
         graphic.innerHTML = `<img src="${url}" class="max-h-24 max-w-full object-contain filter contrast-125" alt="upload" />`;
-        showToast('Uploaded graphic mapped to chest print');
+        
+        // 2. Hide upload dropzone, reveal success bar & advanced wrapper
+        document.getElementById('upload-box').classList.add('hidden');
+        document.getElementById('upload-success-bar').classList.remove('hidden');
+        document.getElementById('thumb-img').src = url;
+        document.getElementById('upload-filename').innerText = file.name || 'custom_graphic.png';
+        
+        // 3. Show the advanced DTF wrapper, but keep it COLLAPSED by default
+        document.getElementById('advanced-dtf-wrapper').classList.remove('hidden');
+        collapseDtfSettings();
+
+        showToast('Mapped to chest! Quality settings ready (collapsed).');
       }
+    }
+
+    function clearSimulatedUpload() {
+      state.uploadedImageUrl = null;
+      document.getElementById('upload-box').classList.remove('hidden');
+      document.getElementById('upload-success-bar').classList.add('hidden');
+      document.getElementById('advanced-dtf-wrapper').classList.add('hidden');
+      collapseDtfSettings();
+      selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>');
+    }
+
+    function toggleDtfSettings() {
+      state.isDtfSettingsOpen = !state.isDtfSettingsOpen;
+      const content = document.getElementById('dtf-settings-content');
+      const chevron = document.getElementById('dtf-chevron');
+      if (state.isDtfSettingsOpen) {
+        content.classList.remove('hidden');
+        chevron.innerText = 'Collapse ▲';
+      } else {
+        content.classList.add('hidden');
+        chevron.innerText = 'Expand ▼';
+      }
+    }
+
+    function collapseDtfSettings() {
+      state.isDtfSettingsOpen = false;
+      document.getElementById('dtf-settings-content').classList.add('hidden');
+      document.getElementById('dtf-chevron').innerText = 'Expand ▼';
+    }
+
+    function setKnockoutColor(hex, label) {
+      document.getElementById('label-knockout').innerText = label;
+      ['white', 'black', 'none'].forEach(k => {
+        const btn = document.getElementById(`btn-ko-${k}`);
+        if (label.toLowerCase().includes(k)) {
+          btn.className = 'rounded-lg border border-white bg-white/15 py-1.5 text-center text-xs font-medium text-white';
+        } else {
+          btn.className = 'rounded-lg border border-white/10 bg-white/5 py-1.5 text-center text-xs font-medium text-zinc-400 hover:text-white';
+        }
+      });
+      showToast(`Knockout color: ${label}`);
+    }
+
+    function downloadDtfPreview() {
+      showToast('Exporting high-resolution 300 DPI DTF production file...');
     }
 
     function updateSummary() {
@@ -467,7 +613,6 @@
     function confirmSize(size, chest) {
       state.selectedSize = size;
       state.chestSize = chest;
-      // Highlight selected size button
       const buttons = document.querySelectorAll('.size-btn');
       buttons.forEach(btn => {
         if (btn.innerText.includes(size)) {
@@ -502,6 +647,7 @@
       setArtMode('drops');
       state.bagCount = 0;
       document.getElementById('bag-count').innerText = 0;
+      clearSimulatedUpload();
       selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>');
       showToast('Prototype state reset to default');
     }
