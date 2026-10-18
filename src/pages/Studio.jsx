@@ -15,13 +15,16 @@ import {
 import DtfPrintPanel from "../components/DtfPrintPanel";
 import ImageCropModal from "../components/ImageCropModal";
 import DtfCollectionsModal from "../components/DtfCollectionsModal";
+import SaveToGroupModal from "../components/SaveToGroupModal";
 import { colors, curatedDrops, garmentOptions, sizes, zones } from "../data/mock";
 import {
   money,
   getSessionId,
   getDtfCollections,
   saveDtfCollectionItem,
-  deleteDtfCollectionItem
+  deleteDtfCollectionItem,
+  getDtfGroups,
+  saveDtfGroup
 } from "../lib/storage";
 import { computePrintWidthInches, getSheetPreset, processDtfImage } from "../lib/dtfProcessor";
 import { api } from "../lib/api";
@@ -71,6 +74,7 @@ export default function Studio({ addToCart, notify }) {
   // Saved DTF Collections & Versions State
   const [collections, setCollections] = useState([]);
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
+  const [isSaveGroupModalOpen, setIsSaveGroupModalOpen] = useState(false);
   const [isSavingVersion, setIsSavingVersion] = useState(false);
   const [activeVersionId, setActiveVersionId] = useState(null);
 
@@ -239,18 +243,26 @@ export default function Studio({ addToCart, notify }) {
     return `${base} · v${nextVersionNum} · ${dateStr}, ${timeStr}`;
   }, [activeFileName, nextVersionNum]);
 
-  // Save current version to personal DTF collections
-  const handleSaveVersion = async () => {
+  // Open Instagram-style Save to Collection Folder Modal
+  const handleSaveVersion = () => {
     if (!uploadedUrl) {
       notify("Please upload or frame a graphic before saving a version.");
       return;
     }
+    setIsSaveGroupModalOpen(true);
+  };
+
+  const handleConfirmSaveToGroup = async ({ designName, collectionGroup }) => {
     setIsSavingVersion(true);
     const sid = getSessionId();
+    const finalGroupName = collectionGroup && collectionGroup.trim() ? collectionGroup.trim() : "General";
+    saveDtfGroup(finalGroupName);
+
     const versionPayload = {
       id: `dtf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sessionId: sid,
-      designName: suggestedVersionName,
+      designName: designName || suggestedVersionName,
+      collectionGroup: finalGroupName,
       originalFilename: activeFileName,
       versionNumber: nextVersionNum,
       imageDataUrl: uploadedDataUrl || uploadedUrl,
@@ -271,6 +283,7 @@ export default function Studio({ addToCart, notify }) {
     const updated = saveDtfCollectionItem(versionPayload);
     setCollections(updated);
     setActiveVersionId(versionPayload.id);
+    setIsSaveGroupModalOpen(false);
 
     // 2. Synchronize to backend database
     try {
@@ -279,7 +292,7 @@ export default function Studio({ addToCart, notify }) {
       // Offline / guest mode handled via local storage seamlessly
     } finally {
       setIsSavingVersion(false);
-      notify(`Saved to DTF Collections: v${nextVersionNum}`);
+      notify(`Saved to "${finalGroupName}": ${designName || `v${nextVersionNum}`}`);
     }
   };
 
@@ -819,6 +832,17 @@ export default function Studio({ addToCart, notify }) {
         onAddToCartVersion={handleAddToCartVersion}
         onDeleteVersion={handleDeleteVersion}
         activeVersionId={activeVersionId}
+      />
+
+      {/* Save to Collection Folder Modal (Instagram-style grouping) */}
+      <SaveToGroupModal
+        isOpen={isSaveGroupModalOpen}
+        onClose={() => setIsSaveGroupModalOpen(false)}
+        suggestedName={suggestedVersionName}
+        existingGroups={getDtfGroups()}
+        previewImage={processedUrl || uploadedDataUrl || uploadedUrl}
+        onSave={handleConfirmSaveToGroup}
+        isSaving={isSavingVersion}
       />
     </div>
   );

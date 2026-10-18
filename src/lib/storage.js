@@ -99,6 +99,7 @@ export function saveDtfCollectionItem(item) {
   const now = new Date().toISOString();
   const fullItem = {
     ...item,
+    collectionGroup: item.collectionGroup && item.collectionGroup.trim() ? item.collectionGroup.trim() : "General",
     updatedAt: now,
     createdAt: item.createdAt || now,
   };
@@ -115,4 +116,31 @@ export function deleteDtfCollectionItem(id) {
   const list = getDtfCollections().filter(c => String(c.id) !== String(id));
   localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
   return list;
+}
+
+const DTF_GROUPS_KEY = "mc_dtf_groups_v1";
+
+export function getDtfGroups() {
+  try {
+    const customGroups = JSON.parse(localStorage.getItem(DTF_GROUPS_KEY) || "[]");
+    const items = getDtfCollections();
+    const itemGroups = items.map(i => i.collectionGroup).filter(Boolean);
+    const combined = Array.from(new Set(["General", ...customGroups, ...itemGroups]));
+    return combined;
+  } catch {
+    return ["General"];
+  }
+}
+
+export function saveDtfGroup(name) {
+  if (!name || typeof name !== "string") return getDtfGroups();
+  const trimmed = name.trim();
+  if (!trimmed) return getDtfGroups();
+  const existing = getDtfGroups();
+  if (!existing.includes(trimmed)) {
+    const custom = JSON.parse(localStorage.getItem(DTF_GROUPS_KEY) || "[]");
+    custom.push(trimmed);
+    localStorage.setItem(DTF_GROUPS_KEY, JSON.stringify(custom));
+  }
+  return getDtfGroups();
 }
