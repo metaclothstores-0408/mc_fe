@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B&D — Interactive Prototype (Figma Preview)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
+    body {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #050507;
+      color: #f4f4f5;
+    }
+    .brand-title {
+      font-family: 'Syne', sans-serif;
+    }
+    .noise-bg {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .glow-subtle {
+      box-shadow: 0 0 50px -10px rgba(255, 255, 255, 0.08);
+    }
+    /* Smooth transitions */
+    .drawer-transition {
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    }
+  </style>
+</head>
+<body class="noise-bg antialiased min-h-screen selection:bg-white selection:text-black">
+
+  <!-- Top Prototype Control Bar (Figma Bar) -->
+  <aside class="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-2.5 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="flex h-6 w-6 items-center justify-center rounded-md bg-white text-black font-black text-xs">
+        B&D
+      </div>
+      <span class="text-xs font-semibold tracking-wider uppercase text-zinc-400">
+        Interactive Design Prototype · <span class="text-white font-mono">v1.0 (Monochrome Atelier)</span>
+      </span>
+    </div>
+    <div class="flex items-center gap-3 text-xs">
+      <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-400 text-[11px] font-medium">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        Ready to Review
+      </span>
+      <button onclick="resetPrototype()" class="rounded-lg border border-white/15 px-2.5 py-1 text-zinc-400 hover:text-white hover:border-white/30 transition">
+        Reset State
+      </button>
+    </div>
+  </aside>
+
+  <!-- B&D Main Navigation -->
+  <header class="border-b border-white/10 bg-black/40 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto flex h-20 items-center justify-between px-6">
+      <div class="flex items-center gap-8">
+        <a href="#atelier" class="brand-title text-2xl font-black tracking-[0.28em] text-white hover:opacity-90 transition">
+          B & D
+        </a>
+        <nav class="hidden md:flex items-center gap-6 text-xs uppercase tracking-widest text-zinc-400 font-medium">
+          <a href="#atelier" class="text-white">Atelier</a>
+          <a href="#drops" class="hover:text-white transition">Exclusive Drops</a>
+          <a href="#fabric" class="hover:text-white transition">240 GSM Fabric</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-4">
+        <button onclick="openSizeDrawer()" class="relative flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium tracking-wider uppercase text-white hover:bg-white/10 transition">
+          <span>Bag</span>
+          <span id="bag-count" class="flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-black">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Editorial Hero -->
+  <section class="max-w-7xl mx-auto px-6 pt-12 pb-8">
+    <div class="border-b border-white/10 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div>
+        <p class="text-xs uppercase tracking-[0.3em] font-semibold text-zinc-500 mb-2">Monochrome Streetwear · Tirupur Cotton</p>
+        <h1 class="brand-title text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-none">
+          FORM FOLLOWS SHADE.
+        </h1>
+      </div>
+      <div class="max-w-md text-xs sm:text-sm text-zinc-400 leading-relaxed">
+        Engineered for young adults. Pure heavyweight black & white blanks with drop-shoulder silhouettes. Zero cartoon avatars, zero dead stock, zero clutter.
+      </div>
+    </div>
+  </section>
+
+  <!-- The B&D Atelier (Interactive 2-Step Customizer) -->
+  <main id="atelier" class="max-w-7xl mx-auto px-6 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left: Interactive 3D Mockup Viewport -->
+      <div class="lg:col-span-7 sticky top-28">
+        <div id="mockup-frame" class="relative aspect-[4/5] sm:aspect-square w-full rounded-2xl border border-white/10 bg-[#0d0d10] p-8 flex items-center justify-center overflow-hidden glow-subtle transition-all duration-300">
+          
+          <!-- Background Radial Light -->
+          <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.06)_0%,transparent_70%)] pointer-events-none"></div>
+          
+          <!-- Garment Representation (SVG/Vector Silhouette with Live Color Switching) -->
+          <div class="relative w-4/5 max-w-[380px] transition-all duration-300 transform" id="garment-render">
+            <!-- T-Shirt Silhouette Vector -->
+            <svg id="tshirt-vector" viewBox="0 0 400 440" class="w-full h-auto drop-shadow-[0_25px_35px_rgba(0,0,0,0.8)] transition-all duration-300">
+              <defs>
+                <linearGradient id="fabricShadingDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#1c1c20" />
+                  <stop offset="50%" stop-color="#0f0f12" />
+                  <stop offset="100%" stop-color="#070708" />
+                </linearGradient>
+                <linearGradient id="fabricShadingLight" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff" />
+                  <stop offset="50%" stop-color="#f0f0f3" />
+                  <stop offset="100%" stop-color="#dcdde0" />
+                </linearGradient>
+              </defs>
+              <!-- Garment path -->
+              <path id="tshirt-path" d="M125,50 C145,75 255,75 275,50 L365,100 L325,185 L285,160 L285,395 C285,405 115,405 115,395 L115,160 L75,185 L35,100 Z" 
+                    fill="url(#fabricShadingDark)" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
+              <!-- Collar ring -->
+              <path id="tshirt-collar" d="M125,50 C145,75 255,75 275,50 C250,90 150,90 125,50 Z" 
+                    fill="#151518" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+            </svg>
+
+            <!-- Decal Print (Center Chest DTF Position) -->
+            <div id="print-decal" class="absolute top-[32%] left-1/2 -translate-x-1/2 w-[46%] aspect-square flex flex-col items-center justify-center p-3 text-center transition-all duration-300">
+              <div id="decal-content" class="w-full h-full flex flex-col items-center justify-center">
+                <!-- Drop Graphic Artwork Preview -->
+                <div id="graphic-art" class="font-black text-2xl tracking-[0.25em] text-white uppercase leading-none drop-shadow-md">
+                  VOID<br><span class="text-xs font-mono tracking-widest text-zinc-300">ARCHIVE 01</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top-Left Silhouette & Shade Badge -->
+          <div class="absolute left-4 top-4 rounded-lg border border-white/10 bg-black/70 px-3 py-1.5 backdrop-blur-md">
+            <span id="badge-silhouette" class="text-xs font-bold text-white tracking-wide">Oversized Boxy Tee</span>
+            <span class="text-zinc-500"> · </span>
+            <span id="badge-shade" class="text-xs text-zinc-400 font-mono">Noir Black</span>
+          </div>
+
+          <!-- Bottom Floating 3D Hint -->
+          <div class="absolute bottom-4 left-4 right-4 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+            <span>DTF SIZE: A3 CHEST COVERAGE</span>
+            <span>240 GSM COMBED COTTON</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Clean 2-Step Configuration Panel -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Step 1: Silhouette & Shade (Monochrome Alone) -->
+        <div class="rounded-2xl border border-white/10 bg-[#0c0c0e] p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-white/10 pb-4">
+            <span class="text-xs font-mono text-zinc-400 tracking-wider">01 / SILHOUETTE & SHADE</span>
+            <span class="text-xs font-semibold text-emerald-400">Ready Stock Tirupur</span>
+          </div>
+
+          <!-- Shade Toggle (Black vs White) -->
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-zinc-400 mb-2 font-medium">Garment Shade</label>
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="setShade('black')" id="btn-shade-black" class="flex items-center gap-3 rounded-xl border border-white p-3 bg-white/10 transition">
+                <span class="h-7 w-7 rounded-full bg-[#0a0a0c] border border-white/20 shadow-inner"></span>
+                <div class="text-left">
+                  <div class="text-xs font-bold text-white uppercase tracking-wider">Noir Black</div>
+                  <div class="text-[11px] text-zinc-400">Pitch Black Cotton</div>
+                </div>
+              </button>
+              <button onclick="setShade('white')" id="btn-shade-white" class="flex items-center gap-3 rounded-xl border border-white/10 p-3 bg-white/[0.02] hover:border-white/20 transition">
+                <span class="h-7 w-7 rounded-full bg-[#f8f9fa] border border-black/10 shadow-inner"></span>
+                <div class="text-left">
+                  <div class="text-xs font-bold text-white uppercase tracking-wider">Chalk White</div>
+                  <div class="text-[11px] text-zinc-400">Super Combed White</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Silhouette Options -->
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-zinc-400 mb-2 font-medium">Garment Cut</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="setSilhouette('oversized', 999)" id="btn-cut-oversized" class="rounded-xl border border-white bg-white/10 p-3 text-left transition">
+                <div class="text-xs font-bold text-white">Oversized</div>
+                <div class="text-[11px] text-zinc-400 mt-1">240 GSM</div>
+                <div class="text-xs font-semibold text-zinc-200 mt-2">₹999</div>
+              </button>
+              <button onclick="setSilhouette('classic', 849)" id="btn-cut-classic" class="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left hover:border-white/20 transition">
+                <div class="text-xs font-bold text-white">Classic Fit</div>
+                <div class="text-[11px] text-zinc-400 mt-1">220 GSM</div>
+                <div class="text-xs font-semibold text-zinc-200 mt-2">₹849</div>
+              </button>
+              <button onclick="setSilhouette('hoodie', 1699)" id="btn-cut-hoodie" class="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left hover:border-white/20 transition">
+                <div class="text-xs font-bold text-white">Hoodie</div>
+                <div class="text-[11px] text-zinc-400 mt-1">380 GSM</div>
+                <div class="text-xs font-semibold text-zinc-200 mt-2">₹1,699</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Artwork & Drop Selection -->
+        <div class="rounded-2xl border border-white/10 bg-[#0c0c0e] p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-white/10 pb-4">
+            <span class="text-xs font-mono text-zinc-400 tracking-wider">02 / ARTWORK & PRINTS</span>
+            <span class="text-xs text-zinc-500">Center Chest DTF</span>
+          </div>
+
+          <!-- Mode Toggle: Curated Drops vs Upload -->
+          <div class="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black border border-white/10">
+            <button onclick="setArtMode('drops')" id="tab-drops" class="rounded-lg bg-white/15 py-1.5 text-xs font-semibold text-white">Curated Drops</button>
+            <button onclick="setArtMode('upload')" id="tab-upload" class="rounded-lg py-1.5 text-xs font-medium text-zinc-400 hover:text-white">Upload Graphic</button>
+          </div>
+
+          <!-- Drops Selector -->
+          <div id="section-drops" class="space-y-2">
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>')" class="rounded-xl border border-white bg-white/10 p-2.5 text-center transition">
+                <div class="text-xs font-bold text-white">Drop 01</div>
+                <div class="text-[10px] text-zinc-400 mt-0.5">Void Archive</div>
+              </button>
+              <button onclick="selectDrop('CYBER KANJI', '<span class=\'text-2xl\'>東京</span><br><span class=\'text-[10px] tracking-[0.3em]\'>NOIR EDITION</span>')" class="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center hover:border-white/20 transition">
+                <div class="text-xs font-bold text-white">Drop 02</div>
+                <div class="text-[10px] text-zinc-400 mt-0.5">Tokyo Kanji</div>
+              </button>
+              <button onclick="selectDrop('BRUTALIST CIPHER', 'B & D<br><span class=\'text-[9px] tracking-widest font-mono text-zinc-400\'>// 240 GSM</span>')" class="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center hover:border-white/20 transition">
+                <div class="text-xs font-bold text-white">Drop 03</div>
+                <div class="text-[10px] text-zinc-400 mt-0.5">Cipher Mark</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Upload Dropzone (Simulated) -->
+          <div id="section-upload" class="hidden space-y-3">
+            <label class="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 p-6 text-center cursor-pointer hover:border-white/40 transition">
+              <svg class="h-6 w-6 text-zinc-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span class="text-xs font-semibold text-white">Upload Your Artwork or Logo</span>
+              <span class="text-[11px] text-zinc-500 mt-1">Automatic transparent background removal</span>
+              <input type="file" accept="image/*" class="hidden" onchange="handleSimulatedUpload(event)">
+            </label>
+          </div>
+        </div>
+
+        <!-- Sticky Purchase Card -->
+        <div class="rounded-2xl border border-white/15 bg-[#101014] p-6 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div id="summary-title" class="text-sm font-bold text-white">B&D Oversized Tee</div>
+              <div id="summary-sub" class="text-xs text-zinc-400">Noir Black · 240 GSM Combed Cotton</div>
+            </div>
+            <div id="summary-price" class="text-2xl font-black text-white">₹999</div>
+          </div>
+
+          <!-- Primary CTA: Triggers Quick-Size Drawer -->
+          <button onclick="openSizeDrawer()" class="w-full flex items-center justify-center gap-2 rounded-xl bg-white py-4 text-xs font-bold tracking-widest uppercase text-black hover:bg-zinc-200 transition active:scale-[0.99] shadow-lg">
+            <span>Add to Bag — Select Fit</span>
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+          <p class="text-center text-[11px] text-zinc-500 mt-3 font-mono">Dispatches in 24 hours from Tirupur Hub · Free Shipping</p>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Interactive Slide-Up Quick-Size Drawer (Frictionless UX) -->
+  <div id="size-modal-backdrop" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="size-drawer" class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl border-t border-x border-white/20 bg-[#0e0e12] p-6 shadow-2xl drawer-transition transform translate-y-full">
+      
+      <!-- Drawer Drag Handle -->
+      <div class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-5"></div>
+
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h3 class="text-base font-bold text-white">Select Your Size</h3>
+          <p class="text-xs text-zinc-400 mt-0.5">Boxy drop-shoulder cut. Sized to Indian/Tirupur standards.</p>
+        </div>
+        <button onclick="closeSizeDrawer()" class="h-8 w-8 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white">
+          ✕
+        </button>
+      </div>
+
+      <!-- Size Selector Grid -->
+      <div class="grid grid-cols-5 gap-2 my-5">
+        <button onclick="confirmSize('S', 38)" class="size-btn rounded-xl border border-white/15 bg-white/5 py-3 text-center hover:border-white hover:bg-white/10 transition">
+          <div class="text-sm font-bold text-white">S</div>
+          <div class="text-[10px] text-zinc-400 mt-0.5">38″</div>
+        </button>
+        <button onclick="confirmSize('M', 40)" class="size-btn rounded-xl border border-white/15 bg-white/5 py-3 text-center hover:border-white hover:bg-white/10 transition">
+          <div class="text-sm font-bold text-white">M</div>
+          <div class="text-[10px] text-zinc-400 mt-0.5">40″</div>
+        </button>
+        <button onclick="confirmSize('L', 42)" class="size-btn rounded-xl border border-white bg-white/15 py-3 text-center ring-2 ring-white/30 transition">
+          <div class="text-sm font-bold text-white">L</div>
+          <div class="text-[10px] text-zinc-300 mt-0.5">42″</div>
+        </button>
+        <button onclick="confirmSize('XL', 44)" class="size-btn rounded-xl border border-white/15 bg-white/5 py-3 text-center hover:border-white hover:bg-white/10 transition">
+          <div class="text-sm font-bold text-white">XL</div>
+          <div class="text-[10px] text-zinc-400 mt-0.5">44″</div>
+        </button>
+        <button onclick="confirmSize('XXL', 46)" class="size-btn rounded-xl border border-white/15 bg-white/5 py-3 text-center hover:border-white hover:bg-white/10 transition">
+          <div class="text-sm font-bold text-white">XXL</div>
+          <div class="text-[10px] text-zinc-400 mt-0.5">46″</div>
+        </button>
+      </div>
+
+      <!-- Quick Fit Guide Info -->
+      <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[11px] text-zinc-400 flex items-center gap-3">
+        <span class="text-lg">📏</span>
+        <span>For a relaxed oversized aesthetic, choose your regular t-shirt size. For a fitted look, size down by one.</span>
+      </div>
+
+      <!-- Confirm Button -->
+      <button onclick="addToBagFinal()" class="w-full mt-5 rounded-xl bg-white py-3.5 text-xs font-bold uppercase tracking-wider text-black hover:bg-zinc-200 transition">
+        Confirm Size & Add to Bag
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-white/20 bg-black/90 px-4 py-3 text-xs text-white shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-3">
+    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+    <span id="toast-message">Added to bag</span>
+  </div>
+
+  <script>
+    // State management for prototype
+    let state = {
+      shade: 'black',
+      silhouette: 'oversized',
+      price: 999,
+      artMode: 'drops',
+      dropTitle: 'VOID ARCHIVE 01',
+      selectedSize: 'L',
+      chestSize: 42,
+      bagCount: 0
+    };
+
+    function setShade(shade) {
+      state.shade = shade;
+      const tshirtPath = document.getElementById('tshirt-path');
+      const tshirtCollar = document.getElementById('tshirt-collar');
+      const graphicArt = document.getElementById('graphic-art');
+      const badgeShade = document.getElementById('badge-shade');
+      const btnBlack = document.getElementById('btn-shade-black');
+      const btnWhite = document.getElementById('btn-shade-white');
+
+      if (shade === 'black') {
+        tshirtPath.setAttribute('fill', 'url(#fabricShadingDark)');
+        tshirtCollar.setAttribute('fill', '#151518');
+        graphicArt.classList.remove('text-black');
+        graphicArt.classList.add('text-white');
+        badgeShade.innerText = 'Noir Black';
+        btnBlack.className = 'flex items-center gap-3 rounded-xl border border-white p-3 bg-white/10 transition';
+        btnWhite.className = 'flex items-center gap-3 rounded-xl border border-white/10 p-3 bg-white/[0.02] hover:border-white/20 transition';
+      } else {
+        tshirtPath.setAttribute('fill', 'url(#fabricShadingLight)');
+        tshirtCollar.setAttribute('fill', '#e5e7eb');
+        graphicArt.classList.remove('text-white');
+        graphicArt.classList.add('text-black');
+        badgeShade.innerText = 'Chalk White';
+        btnWhite.className = 'flex items-center gap-3 rounded-xl border border-white p-3 bg-white/10 transition';
+        btnBlack.className = 'flex items-center gap-3 rounded-xl border border-white/10 p-3 bg-white/[0.02] hover:border-white/20 transition';
+      }
+      updateSummary();
+    }
+
+    function setSilhouette(type, price) {
+      state.silhouette = type;
+      state.price = price;
+      const badge = document.getElementById('badge-silhouette');
+      const render = document.getElementById('garment-render');
+
+      // Update button styles
+      ['oversized', 'classic', 'hoodie'].forEach(t => {
+        const btn = document.getElementById(`btn-cut-${t}`);
+        if (t === type) {
+          btn.className = 'rounded-xl border border-white bg-white/10 p-3 text-left transition';
+        } else {
+          btn.className = 'rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left hover:border-white/20 transition';
+        }
+      });
+
+      if (type === 'oversized') {
+        badge.innerText = 'Oversized Boxy Tee';
+        render.style.transform = 'scale(1.08, 1.0)';
+      } else if (type === 'classic') {
+        badge.innerText = 'Classic Round Neck';
+        render.style.transform = 'scale(1.0, 1.0)';
+      } else if (type === 'hoodie') {
+        badge.innerText = 'Fleece Hoodie';
+        render.style.transform = 'scale(1.12, 1.04)';
+      }
+      updateSummary();
+    }
+
+    function setArtMode(mode) {
+      state.artMode = mode;
+      const tabDrops = document.getElementById('tab-drops');
+      const tabUpload = document.getElementById('tab-upload');
+      const secDrops = document.getElementById('section-drops');
+      const secUpload = document.getElementById('section-upload');
+
+      if (mode === 'drops') {
+        tabDrops.className = 'rounded-lg bg-white/15 py-1.5 text-xs font-semibold text-white';
+        tabUpload.className = 'rounded-lg py-1.5 text-xs font-medium text-zinc-400 hover:text-white';
+        secDrops.classList.remove('hidden');
+        secUpload.classList.add('hidden');
+      } else {
+        tabUpload.className = 'rounded-lg bg-white/15 py-1.5 text-xs font-semibold text-white';
+        tabDrops.className = 'rounded-lg py-1.5 text-xs font-medium text-zinc-400 hover:text-white';
+        secUpload.classList.remove('hidden');
+        secDrops.classList.add('hidden');
+      }
+    }
+
+    function selectDrop(title, html) {
+      state.dropTitle = title;
+      const graphic = document.getElementById('graphic-art');
+      graphic.innerHTML = html;
+      showToast(`Applied: ${title}`);
+    }
+
+    function handleSimulatedUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const graphic = document.getElementById('graphic-art');
+        graphic.innerHTML = `<img src="${url}" class="max-h-24 max-w-full object-contain filter contrast-125" alt="upload" />`;
+        showToast('Uploaded graphic mapped to chest print');
+      }
+    }
+
+    function updateSummary() {
+      const silLabels = { oversized: 'B&D Oversized Tee', classic: 'B&D Classic Tee', hoodie: 'B&D Fleece Hoodie' };
+      document.getElementById('summary-title').innerText = silLabels[state.silhouette];
+      document.getElementById('summary-sub').innerText = `${state.shade === 'black' ? 'Noir Black' : 'Chalk White'} · 240 GSM Combed Cotton`;
+      document.getElementById('summary-price').innerText = `₹${state.price}`;
+    }
+
+    function openSizeDrawer() {
+      const backdrop = document.getElementById('size-modal-backdrop');
+      const drawer = document.getElementById('size-drawer');
+      backdrop.classList.remove('opacity-0', 'pointer-events-none');
+      backdrop.classList.add('opacity-100');
+      drawer.classList.remove('translate-y-full');
+      drawer.classList.add('translate-y-0');
+    }
+
+    function closeSizeDrawer() {
+      const backdrop = document.getElementById('size-modal-backdrop');
+      const drawer = document.getElementById('size-drawer');
+      backdrop.classList.add('opacity-0', 'pointer-events-none');
+      backdrop.classList.remove('opacity-100');
+      drawer.classList.add('translate-y-full');
+      drawer.classList.remove('translate-y-0');
+    }
+
+    function confirmSize(size, chest) {
+      state.selectedSize = size;
+      state.chestSize = chest;
+      // Highlight selected size button
+      const buttons = document.querySelectorAll('.size-btn');
+      buttons.forEach(btn => {
+        if (btn.innerText.includes(size)) {
+          btn.className = 'size-btn rounded-xl border border-white bg-white/15 py-3 text-center ring-2 ring-white/30 transition';
+        } else {
+          btn.className = 'size-btn rounded-xl border border-white/15 bg-white/5 py-3 text-center hover:border-white hover:bg-white/10 transition';
+        }
+      });
+    }
+
+    function addToBagFinal() {
+      closeSizeDrawer();
+      state.bagCount += 1;
+      document.getElementById('bag-count').innerText = state.bagCount;
+      showToast(`Added: ${state.shade === 'black' ? 'Noir Black' : 'Chalk White'} (${state.selectedSize} - ${state.chestSize}″)`);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-2');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-2');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+
+    function resetPrototype() {
+      setShade('black');
+      setSilhouette('oversized', 999);
+      setArtMode('drops');
+      state.bagCount = 0;
+      document.getElementById('bag-count').innerText = 0;
+      selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>');
+      showToast('Prototype state reset to default');
+    }
+  </script>
+</body>
+</html>
