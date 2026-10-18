@@ -15,7 +15,7 @@ export const curatedDrops = [
     subtitle: "Minimal Brutalism",
     textMark: "VOID",
     subMark: "ARCHIVE 01",
-    author: "B&D Studio",
+    author: "SHADE 01 Studio",
     price: 999
   },
   {
@@ -24,33 +24,33 @@ export const curatedDrops = [
     subtitle: "East Meets Dark",
     textMark: "東京",
     subMark: "NOIR EDITION",
-    author: "B&D Studio",
+    author: "SHADE 01 Studio",
     price: 999
   },
   {
     id: "drop-03",
     title: "BRUTALIST CIPHER",
     subtitle: "Technical Streetwear",
-    textMark: "B & D",
-    subMark: "// 240 GSM",
-    author: "B&D Studio",
+    textMark: "SHADE // 01",
+    subMark: "// 260 GSM",
+    author: "SHADE 01 Studio",
     price: 999
   }
 ];
 
 export const products = [
   {
-    id: 1, name: "B&D Void Oversized Tee", garmentType: "OVERSIZED", basePrice: 999,
-    description: "240 GSM heavyweight combed cotton in our signature drop-shoulder boxy cut with high-contrast DTF graphic.",
+    id: 1, name: "SHADE 01 Void Oversized Tee", garmentType: "OVERSIZED", basePrice: 999,
+    description: "260 GSM heavyweight combed cotton in our signature drop-shoulder boxy cut with high-contrast DTF graphic.",
     tags: ["Drop 01", "Best Seller"], customizable: false,
     variants: [
-      { id: 101, colorName: "Noir Black", colorHex: "#0B0B0C", size: "L", stock: 25, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=B%26D+VOID" },
-      { id: 102, colorName: "Chalk White", colorHex: "#F7F7F8", size: "L", stock: 20, image: "https://placehold.co/900x1100/F7F7F8/0B0B0C?text=B%26D+VOID" }
+      { id: 101, colorName: "Noir Black", colorHex: "#0B0B0C", size: "L", stock: 25, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=SHADE+01+VOID" },
+      { id: 102, colorName: "Chalk White", colorHex: "#F7F7F8", size: "L", stock: 20, image: "https://placehold.co/900x1100/F7F7F8/0B0B0C?text=SHADE+01+VOID" }
     ]
   },
   {
-    id: 2, name: "B&D Tokyo Noir Kanji Tee", garmentType: "OVERSIZED", basePrice: 999,
-    description: "Minimalist brutalist typography celebrating Tokyo streetwear culture. 240 GSM premium Tirupur cotton.",
+    id: 2, name: "SHADE 01 Tokyo Noir Kanji Tee", garmentType: "OVERSIZED", basePrice: 999,
+    description: "Minimalist brutalist typography celebrating Tokyo streetwear culture. 260 GSM premium Tirupur cotton.",
     tags: ["Drop 02", "Oversized"], customizable: false,
     variants: [
       { id: 201, colorName: "Noir Black", colorHex: "#0B0B0C", size: "M", stock: 30, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=TOKYO+NOIR" },
@@ -58,20 +58,20 @@ export const products = [
     ]
   },
   {
-    id: 3, name: "B&D Heavy Fleece Hoodie", garmentType: "HOODIE", basePrice: 1699,
+    id: 3, name: "SHADE 01 Heavy Fleece Hoodie", garmentType: "HOODIE", basePrice: 1699,
     description: "380 GSM ultra-heavyweight brushed fleece hoodie. Roomy streetwear drape with double-lined hood.",
     tags: ["Heavyweight", "Winter"], customizable: false,
     variants: [
-      { id: 301, colorName: "Noir Black", colorHex: "#0B0B0C", size: "L", stock: 12, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=B%26D+HOODIE" }
+      { id: 301, colorName: "Noir Black", colorHex: "#0B0B0C", size: "L", stock: 12, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=SHADE+01+HOODIE" }
     ]
   },
   {
-    id: 4, name: "B&D Atelier Custom Tee", garmentType: "OVERSIZED", basePrice: 999,
-    description: "240 GSM blank canvas ready for your custom graphic with high-definition DTF print from Tirupur.",
+    id: 4, name: "SHADE 01 Atelier Custom Tee", garmentType: "OVERSIZED", basePrice: 999,
+    description: "260 GSM blank canvas ready for your custom graphic with high-definition DTF print from Tirupur.",
     tags: ["Atelier", "Custom"], customizable: true,
     variants: [
-      { id: 401, colorName: "Noir Black", colorHex: "#0B0B0C", size: "M", stock: 50, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=B%26D+ATELIER" },
-      { id: 402, colorName: "Chalk White", colorHex: "#F7F7F8", size: "M", stock: 50, image: "https://placehold.co/900x1100/F7F7F8/0B0B0C?text=B%26D+ATELIER" }
+      { id: 401, colorName: "Noir Black", colorHex: "#0B0B0C", size: "M", stock: 50, image: "https://placehold.co/900x1100/0B0B0C/F4F4F5?text=SHADE+01+ATELIER" },
+      { id: 402, colorName: "Chalk White", colorHex: "#F7F7F8", size: "M", stock: 50, image: "https://placehold.co/900x1100/F7F7F8/0B0B0C?text=SHADE+01+ATELIER" }
     ]
   }
 ];

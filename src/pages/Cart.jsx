@@ -13,11 +13,11 @@ export default function Cart({ cart, updateQty, remove }) {
       </div>
       <h1 className="mt-6 text-3xl font-black text-white">Your bag is empty.</h1>
       <p className="mt-3 text-xs sm:text-sm text-zinc-400">
-        Explore our curated drops or create a custom piece in B&D Atelier.
+        Explore our curated drops or create a custom piece in SHADE Atelier.
       </p>
       <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
         <Link to="/shop" className="mc-btn-secondary text-xs">Explore Drops</Link>
-        <Link to="/studio" className="mc-btn-primary text-xs">Open B&D Atelier</Link>
+        <Link to="/studio" className="mc-btn-primary text-xs">Open SHADE Atelier</Link>
       </div>
     </div>
   );
@@ -33,7 +33,7 @@ export default function Cart({ cart, updateQty, remove }) {
                 <img src={item.image} className="h-28 w-24 rounded-xl object-cover sm:h-36 sm:w-28 border border-white/5 shrink-0" alt="" />
               ) : (
                 <div className="h-28 w-24 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                  B&D
+                  SHADE 01
                 </div>
               )}
               <div className="min-w-0 flex-1">

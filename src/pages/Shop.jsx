@@ -70,10 +70,10 @@ export default function Shop() {
     <div className="mc-container py-10 sm:py-14">
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400">B&D Archive</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400">SHADE 01 Archive</p>
           <h1 className="text-4xl font-black tracking-tight sm:text-5xl text-white">The Collection</h1>
           <p className="mt-2.5 max-w-xl text-xs sm:text-sm leading-6 text-zinc-400">
-            Monochrome drops and studio blanks crafted from 240+ GSM Tirupur combed cotton.
+            Monochrome drops and studio blanks crafted from 260+ GSM Tirupur combed cotton.
           </p>
         </div>
         <button onClick={() => setMobileFilters(true)} className="mc-btn-secondary sm:hidden text-xs">

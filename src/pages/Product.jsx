@@ -111,8 +111,8 @@ export default function Product({ addToCart, notify }) {
             <Link to="/studio" className="mt-6 flex items-center gap-3 rounded-2xl border border-white/20 bg-white/5 p-4 hover:bg-white/10 transition">
               <Sparkles className="text-white shrink-0" size={20} />
               <div>
-                <b className="block text-sm text-white">Customize in B&D Atelier</b>
-                <span className="text-xs text-zinc-400">Open B&D Atelier and map your custom chest artwork on this blank.</span>
+                <b className="block text-sm text-white">Customize in SHADE Atelier</b>
+                <span className="text-xs text-zinc-400">Open SHADE Atelier and map your custom back graphic on this blank.</span>
               </div>
             </Link>
           )}

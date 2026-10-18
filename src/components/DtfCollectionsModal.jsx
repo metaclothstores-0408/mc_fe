@@ -488,7 +488,7 @@ export default function DtfCollectionsModal({
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-white/10 bg-zinc-900/60 shrink-0 text-xs">
           <span className="text-zinc-500 font-mono">
-            B&D Monochrome Atelier · Instagram-Style Collection Folders
+            SHADE 01 Atelier · Saved DTF Collections
           </span>
           <button
             type="button"

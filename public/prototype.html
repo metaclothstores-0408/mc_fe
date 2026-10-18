@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>B&D — Interactive Prototype (Figma Preview)</title>
+  <title>SHADE 01 — Interactive Prototype (Figma Preview)</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
@@ -34,10 +34,10 @@
   <aside class="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-2.5 backdrop-blur-md">
     <div class="flex items-center gap-3">
       <div class="flex h-6 w-6 items-center justify-center rounded-md bg-white text-black font-black text-xs">
-        B&D
+        01
       </div>
       <span class="text-xs font-semibold tracking-wider uppercase text-zinc-400">
-        Interactive Design Prototype · <span class="text-white font-mono">v1.2 (End-to-End Coverage & Drop Cancel)</span>
+        Interactive Design Prototype · <span class="text-white font-mono">v1.3 (SHADE // 01 Atelier)</span>
       </span>
     </div>
     <div class="flex items-center gap-3 text-xs">
@@ -51,17 +51,17 @@
     </div>
   </aside>
 
-  <!-- B&D Main Navigation -->
+  <!-- SHADE 01 Main Navigation -->
   <header class="border-b border-white/10 bg-black/40 backdrop-blur-sm">
     <div class="max-w-7xl mx-auto flex h-20 items-center justify-between px-6">
       <div class="flex items-center gap-8">
         <a href="#atelier" class="brand-title text-2xl font-black tracking-[0.28em] text-white hover:opacity-90 transition">
-          B & D
+          SHADE // 01
         </a>
         <nav class="hidden md:flex items-center gap-6 text-xs uppercase tracking-widest text-zinc-400 font-medium">
           <a href="#atelier" class="text-white">Atelier</a>
           <a href="#drops" class="hover:text-white transition">Exclusive Drops</a>
-          <a href="#fabric" class="hover:text-white transition">240 GSM Fabric</a>
+          <a href="#fabric" class="hover:text-white transition">260 GSM Fabric</a>
         </nav>
       </div>
       <div class="flex items-center gap-4">
@@ -88,7 +88,7 @@
     </div>
   </section>
 
-  <!-- The B&D Atelier (Interactive 2-Step Customizer) -->
+  <!-- The SHADE 01 Atelier (Interactive 2-Step Customizer) -->
   <main id="atelier" class="max-w-7xl mx-auto px-6 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       
@@ -228,7 +228,7 @@
                 <div class="text-[11px] font-bold text-white">Drop 02</div>
                 <div class="text-[9px] text-zinc-400 mt-0.5">Tokyo</div>
               </button>
-              <button onclick="selectDrop('BRUTALIST CIPHER', 'B & D<br><span class=\'text-[9px] tracking-widest font-mono text-zinc-400\'>// 240 GSM</span>', this)" class="drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition">
+              <button onclick="selectDrop('BRUTALIST CIPHER', 'SHADE // 01<br><span class=\'text-[9px] tracking-widest font-mono text-zinc-400\'>// 260 GSM</span>', this)" class="drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition">
                 <div class="text-[11px] font-bold text-white">Drop 03</div>
                 <div class="text-[9px] text-zinc-400 mt-0.5">Cipher</div>
               </button>
@@ -345,8 +345,8 @@
         <div class="rounded-2xl border border-white/15 bg-[#101014] p-6 shadow-2xl">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <div id="summary-title" class="text-sm font-bold text-white">B&D Oversized Tee</div>
-              <div id="summary-sub" class="text-xs text-zinc-400">Noir Black · 240 GSM Combed Cotton</div>
+              <div id="summary-title" class="text-sm font-bold text-white">SHADE 01 Oversized Tee</div>
+              <div id="summary-sub" class="text-xs text-zinc-400">Noir Black · 260 GSM Combed Cotton</div>
             </div>
             <div id="summary-price" class="text-2xl font-black text-white">₹999</div>
           </div>
@@ -621,9 +621,9 @@
     }
 
     function updateSummary() {
-      const silLabels = { oversized: 'B&D Oversized Tee', classic: 'B&D Classic Tee', hoodie: 'B&D Fleece Hoodie' };
+      const silLabels = { oversized: 'SHADE 01 Oversized Tee', classic: 'SHADE 01 Classic Tee', hoodie: 'SHADE 01 Fleece Hoodie' };
       document.getElementById('summary-title').innerText = silLabels[state.silhouette];
-      document.getElementById('summary-sub').innerText = `${state.shade === 'black' ? 'Noir Black' : 'Chalk White'} · 240 GSM Combed Cotton`;
+      document.getElementById('summary-sub').innerText = `${state.shade === 'black' ? 'Noir Black' : 'Chalk White'} · 260 GSM Combed Cotton`;
       document.getElementById('summary-price').innerText = `₹${state.price}`;
     }
 

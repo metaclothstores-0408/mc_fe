@@ -14,7 +14,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white tracking-wider uppercase">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              B&D // MONOCHROME NOIR
+              SHADE 01 // MONOCHROME ATELIER
             </div>
             <h1 className="max-w-4xl text-5xl font-black leading-[0.94] tracking-[-0.04em] sm:text-6xl lg:text-7xl text-white">
               FORM<br />
@@ -22,18 +22,18 @@ export default function Home() {
               SHADE.
             </h1>
             <p className="mt-6 max-w-xl text-sm sm:text-base leading-7 text-zinc-400">
-              Heavyweight monochrome essentials engineered for young adults. Pure 240 GSM combed cotton blanks with relaxed drop-shoulder silhouettes. Zero dead stock. Zero visual clutter.
+              Heavyweight monochrome essentials engineered for young adults. Pure 260 GSM combed cotton blanks with relaxed drop-shoulder silhouettes. Zero dead stock. Zero visual clutter.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link to="/studio" className="mc-btn-primary">
-                Open B&D Atelier <ArrowRight size={17} />
+                Open SHADE Atelier <ArrowRight size={17} />
               </Link>
               <Link to="/shop" className="mc-btn-secondary">
                 Explore Drops
               </Link>
             </div>
             <div className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-white/10 pt-6 text-xs text-zinc-500 font-mono">
-              <div><b className="block text-sm text-white font-sans font-bold">240+ GSM</b> Heavy Combed Cotton</div>
+              <div><b className="block text-sm text-white font-sans font-bold">260+ GSM</b> Heavy Combed Cotton</div>
               <div><b className="block text-sm text-white font-sans font-bold">100%</b> Black & White Noir</div>
               <div><b className="block text-sm text-white font-sans font-bold">24 HR</b> Tirupur Dispatch</div>
             </div>

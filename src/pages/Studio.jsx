@@ -381,9 +381,9 @@ export default function Studio({ addToCart, notify }) {
     } : null;
 
     addToCart({
-      id: `bd-${Date.now()}`,
+      id: `shade-${Date.now()}`,
       productId: null,
-      name: `B&D ${garment.label}${hasArt ? "" : " (Clean Blank)"}`,
+      name: `SHADE 01 ${garment.label}${hasArt ? "" : " (Clean Blank)"}`,
       price: total,
       quantity: 1,
       size: finalSize,
@@ -401,7 +401,7 @@ export default function Studio({ addToCart, notify }) {
     });
 
     setIsSizeDrawerOpen(false);
-    notify(`Added to bag: B&D ${garment.label} (${color.name} · Size ${finalSize})`);
+    notify(`Added to bag: SHADE 01 ${garment.label} (${color.name} · Size ${finalSize})`);
   };
 
   const reset = () => {
@@ -420,7 +420,7 @@ export default function Studio({ addToCart, notify }) {
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400">
-            B&D Atelier · Tirupur Cotton
+            SHADE 01 Atelier · Tirupur Cotton
           </p>
           <h1 className="text-4xl font-black tracking-tight sm:text-5xl text-white">
             Form Follows Shade.
@@ -450,7 +450,7 @@ export default function Studio({ addToCart, notify }) {
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0d10] p-3 shadow-2xl">
             <Suspense fallback={
               <div className="grid aspect-[4/5] place-items-center rounded-[1.4rem] bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f2f2f5_55%,#d8d8de_100%)] text-xs text-zinc-500 font-mono">
-                Loading B&D 3D Atelier…
+                Loading SHADE 01 3D Atelier…
               </div>
             }>
               <TshirtViewer

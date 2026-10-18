@@ -68,7 +68,7 @@ export default function Checkout({ cart, clearCart, notify }) {
         saveOrders([order, ...getOrders()]);
         clearCart();
         navigate(`/orders/${order.id}`);
-        notify("Order placed — B&D Tirupur production queued");
+        notify("Order placed — SHADE 01 Tirupur production queued");
         return;
       } catch (e) {
         console.warn("Backend order failed, local fallback:", e.message);
@@ -76,8 +76,8 @@ export default function Checkout({ cart, clearCart, notify }) {
     }
     setTimeout(() => {
       const order = {
-        id: makeId("BD"),
-        orderNumber: `BD${Date.now().toString().slice(-8)}`,
+        id: makeId("SHADE"),
+        orderNumber: `SH01${Date.now().toString().slice(-8)}`,
         userId: "local-user",
         totalAmount: total,
         status: "PLACED",
@@ -90,7 +90,7 @@ export default function Checkout({ cart, clearCart, notify }) {
       clearCart();
       navigate(`/orders/${order.id}`);
       setPlacing(false);
-      notify("Order placed — B&D Tirupur production queued");
+      notify("Order placed — SHADE 01 Tirupur production queued");
     }, 500);
   };
 
@@ -119,7 +119,7 @@ export default function Checkout({ cart, clearCart, notify }) {
               </div>
               <div>
                 <h2 className="font-semibold text-white text-sm">Shipping Information</h2>
-                <p className="text-xs text-zinc-400">Where should we deliver your B&D order?</p>
+                <p className="text-xs text-zinc-400">Where should we deliver your SHADE 01 order?</p>
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -138,7 +138,7 @@ export default function Checkout({ cart, clearCart, notify }) {
               <LockKeyhole size={15} className="text-emerald-400" />
               <span>Secure Fulfillment from Tirupur Hub</span>
             </div>
-            <span>All orders are manufactured with 240+ GSM combed cotton and dispatched with live tracking. Test checkout mode enabled.</span>
+            <span>All orders are manufactured with 260+ GSM combed cotton and dispatched with live tracking. Test checkout mode enabled.</span>
           </div>
         </div>
 
@@ -151,7 +151,7 @@ export default function Checkout({ cart, clearCart, notify }) {
                   <img src={i.image} className="h-12 w-10 rounded-lg object-cover border border-white/5 shrink-0" alt="" />
                 ) : (
                   <div className="h-12 w-10 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center font-bold text-[10px] text-white shrink-0">
-                    B&D
+                    01
                   </div>
                 )}
                 <div className="min-w-0 flex-1">

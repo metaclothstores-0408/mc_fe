@@ -7,7 +7,7 @@ export default function Header({ cartCount = 0, user }) {
   const [open, setOpen] = useState(false);
   const nav = [
     ["/shop", "Collection"],
-    ["/studio", "B&D Atelier"],
+    ["/studio", "SHADE Atelier"],
     ["/orders", "Orders"]
   ];
 
