@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { ChevronDown, RotateCcw, ShoppingBag, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, RotateCcw, ShoppingBag, Sparkles, X } from "lucide-react";
 import DtfPrintPanel from "../components/DtfPrintPanel";
 import { colors, curatedDrops, garmentOptions, sizes, zones } from "../data/mock";
 import { money } from "../lib/storage";
@@ -15,8 +15,9 @@ export default function Studio({ addToCart, notify }) {
   const [zone, setZone] = useState(zones[0]); // Chest Center
 
   // 2. Artwork State: Mode can be "drops" or "upload"
+  // Default to null so user starts with a pure clean blank garment without forced VOID drop
   const [artMode, setArtMode] = useState("drops");
-  const [selectedDrop, setSelectedDrop] = useState(curatedDrops[0]);
+  const [selectedDrop, setSelectedDrop] = useState(null);
 
   // DTF Upload State
   const [uploadedUrl, setUploadedUrl] = useState(null);
@@ -31,11 +32,12 @@ export default function Studio({ addToCart, notify }) {
   });
   const [processedUrl, setProcessedUrl] = useState(null);
 
-  // Quick-Size Drawer State (Slide-up modal on Add to Bag)
+  // Quick-Size Drawer State
   const [isSizeDrawerOpen, setIsSizeDrawerOpen] = useState(false);
 
-  // Calculate pricing
-  const printSurcharge = 199;
+  // Check if any graphic is active
+  const hasArt = (artMode === "upload" && !!uploadedUrl) || (artMode === "drops" && !!selectedDrop);
+  const printSurcharge = hasArt ? 199 : 0;
   const total = garment.price + printSurcharge;
 
   // Real-time DTF image processing with debouncing
@@ -68,6 +70,7 @@ export default function Studio({ addToCart, notify }) {
     const url = URL.createObjectURL(file);
     uploadedObjectUrlRef.current = url;
     setUploadedUrl(url);
+    setSelectedDrop(null);
     setArtMode("upload");
 
     const reader = new FileReader();
@@ -105,13 +108,18 @@ export default function Studio({ addToCart, notify }) {
   const viewerText = artMode === "drops" && selectedDrop ? selectedDrop.textMark : "";
   const viewerFont = "Bebas Neue";
 
+  // Toggle drop selection: clicking already selected drop deselects it (returns to clean blank)
   const handleSelectDrop = (drop) => {
-    setSelectedDrop(drop);
-    setArtMode("drops");
+    if (selectedDrop?.id === drop.id) {
+      setSelectedDrop(null);
+    } else {
+      setSelectedDrop(drop);
+      setArtMode("drops");
+      clearUpload();
+    }
   };
 
   const handleOpenAdd = () => {
-    // Open Quick-Size Drawer immediately
     setIsSizeDrawerOpen(true);
   };
 
@@ -140,7 +148,7 @@ export default function Studio({ addToCart, notify }) {
     addToCart({
       id: `bd-${Date.now()}`,
       productId: null,
-      name: `B&D ${garment.label}`,
+      name: `B&D ${garment.label}${hasArt ? "" : " (Clean Blank)"}`,
       price: total,
       quantity: 1,
       size: finalSize,
@@ -148,11 +156,11 @@ export default function Studio({ addToCart, notify }) {
       garmentType: garment.type,
       zone: zone.id,
       avatarId: null,
-      avatarTitle: isCustomUpload ? "Custom Artwork" : selectedDrop.title,
+      avatarTitle: isCustomUpload ? "Custom Artwork" : (selectedDrop?.title || "Clean Blank"),
       image: isCustomUpload ? (processedUrl || uploadedUrl) : null,
       customText: isCustomUpload ? "" : viewerText,
       customFont: viewerFont,
-      custom: true,
+      custom: hasArt,
       printSurcharge,
       dtf_print_parameters
     });
@@ -166,7 +174,7 @@ export default function Studio({ addToCart, notify }) {
     setColor(colors[0]);
     setSize("L");
     setZone(zones[0]);
-    setSelectedDrop(curatedDrops[0]);
+    setSelectedDrop(null);
     clearUpload();
     setDtf({ selectedSheetPreset: "A3", stripColorHex: "#ffffff", stripSensitivity: 30, halftoneDensity: 0, printScale: 1 });
   };
@@ -201,7 +209,7 @@ export default function Studio({ addToCart, notify }) {
                 zone={zone}
                 text={viewerText}
                 font={viewerFont}
-                fontSize={110}
+                fontSize={120}
                 printScale={dtfSheetVisualScale}
                 size={size}
                 garmentType={garment.type}
@@ -210,8 +218,8 @@ export default function Studio({ addToCart, notify }) {
 
             {/* Bottom info bar */}
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-xl border border-black/10 bg-white/70 px-4 py-3 backdrop-blur shadow-sm">
-              <span className="text-xs font-medium text-zinc-700">
-                {garment.label} · {color.name}
+              <span className="text-xs font-medium text-zinc-800">
+                {garment.label} · {color.name} {!hasArt && "· Clean Blank"}
               </span>
               <span className="text-xs font-bold text-zinc-950 font-mono">
                 {money(total)}
@@ -296,7 +304,9 @@ export default function Studio({ addToCart, notify }) {
                 <span className="grid h-6 w-6 place-items-center rounded-lg bg-white/10 text-[10px] font-bold text-white">03</span>
                 <h2 className="text-sm font-semibold text-white">Artwork & Graphic</h2>
               </div>
-              <span className="text-[11px] text-zinc-500">Chest Center DTF</span>
+              <span className="text-[11px] text-zinc-400 font-mono">
+                {hasArt ? "+₹199 DTF Print" : "Plain (No Print)"}
+              </span>
             </div>
 
             {/* Mode Tabs */}
@@ -321,24 +331,57 @@ export default function Studio({ addToCart, notify }) {
               </button>
             </div>
 
-            {/* Curated Drops Selector */}
+            {/* Curated Drops Selector with Deselect / Clean Blank Option */}
             {artMode === "drops" && (
-              <div className="grid grid-cols-3 gap-2">
-                {curatedDrops.map(d => (
+              <div className="space-y-3">
+                <div className="grid grid-cols-4 gap-2">
+                  {/* Clean Blank Option */}
                   <button
-                    key={d.id}
                     type="button"
-                    onClick={() => handleSelectDrop(d)}
-                    className={`rounded-xl border p-2.5 text-center transition ${
-                      selectedDrop?.id === d.id
-                        ? "border-white bg-white/15 text-white"
+                    onClick={() => setSelectedDrop(null)}
+                    className={`rounded-xl border p-2 text-center transition ${
+                      !selectedDrop
+                        ? "border-white bg-white/20 text-white ring-1 ring-white/40 shadow-sm"
                         : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:text-white"
                     }`}
                   >
-                    <div className="text-xs font-bold truncate">{d.textMark}</div>
-                    <div className="text-[10px] text-zinc-400 mt-1 truncate">{d.title}</div>
+                    <div className="text-[11px] font-bold">Blank</div>
+                    <div className="text-[9px] text-zinc-400 mt-0.5 font-mono">No Print</div>
                   </button>
-                ))}
+
+                  {/* Drop Cards */}
+                  {curatedDrops.map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => handleSelectDrop(d)}
+                      className={`rounded-xl border p-2 text-center transition ${
+                        selectedDrop?.id === d.id
+                          ? "border-white bg-white/20 text-white ring-1 ring-white/40 shadow-sm"
+                          : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:text-white"
+                      }`}
+                    >
+                      <div className="text-[11px] font-bold truncate">{d.textMark}</div>
+                      <div className="text-[9px] text-zinc-400 mt-0.5 truncate font-mono">{d.title.split(" ")[0]}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Active drop cancel / reset pill */}
+                {selectedDrop && (
+                  <div className="flex items-center justify-between rounded-xl border border-white/15 bg-white/[0.03] px-3.5 py-2.5 text-xs">
+                    <span className="text-zinc-300 font-medium">
+                      Active: <strong className="text-white">{selectedDrop.title}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDrop(null)}
+                      className="text-xs text-zinc-400 hover:text-white underline decoration-white/20 underline-offset-4 flex items-center gap-1"
+                    >
+                      <X size={13} /> Clear / Plain Tee
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -366,10 +409,17 @@ export default function Studio({ addToCart, notify }) {
               <span>{garment.label} ({color.name})</span>
               <span>{money(garment.price)}</span>
             </div>
-            <div className="mt-2 flex justify-between text-xs text-zinc-400">
-              <span>DTF Center Chest Transfer</span>
-              <span>{money(printSurcharge)}</span>
-            </div>
+            {hasArt ? (
+              <div className="mt-2 flex justify-between text-xs text-zinc-400">
+                <span>DTF Chest Transfer ({selectedDrop ? selectedDrop.title : "Custom Upload"})</span>
+                <span>{money(printSurcharge)}</span>
+              </div>
+            ) : (
+              <div className="mt-2 flex justify-between text-xs text-emerald-400/90 font-mono">
+                <span>Plain Blank Garment</span>
+                <span>₹0 print cost</span>
+              </div>
+            )}
             <div className="my-3.5 border-t border-white/10" />
             <div className="flex justify-between items-baseline">
               <span className="font-semibold text-white">Total</span>
@@ -452,7 +502,7 @@ export default function Studio({ addToCart, notify }) {
             </div>
 
             <p className="text-center text-[10px] text-zinc-500 mt-4 font-mono">
-              Clicking a size instantly adds your custom piece to the bag.
+              Clicking a size instantly adds your {hasArt ? "custom piece" : "blank tee"} to the bag.
             </p>
           </div>
         </div>

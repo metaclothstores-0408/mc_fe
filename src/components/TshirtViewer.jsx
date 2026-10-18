@@ -36,18 +36,17 @@ function readableTextColor(hex) {
 // Measured from tshirt.glb via GLTFLoader:
 // Box min (-11.84,41.50,-7.09) max (11.93,66.15,3.55) center (0.04,53.83,-1.77)
 // After centering, shirt centered span ~[-11.9,11.9] x [-12.3,12.3] x [-5.3,5.3]
-// Sampled front Z at centered y: y=2.2→4.66, y=1→4.74, y=0→4.83, pocket (-3.3,1.45)→4.71
-// Back Z at (0,2.6) → -5.09. tf lives in same scaled group as shirt, already centered.
+// CHEST_CENTER scaled to size 13.5 to achieve full end-to-end chest coverage (~58% of chest width)
 function zoneTransform(zoneId) {
   switch (zoneId) {
     case "POCKET_LEFT":
-      return { position: [-3.8, 1.0, 4.95], rotation: [0, 0, 0], size: 4.2 };
+      return { position: [-3.8, 1.0, 4.95], rotation: [0, 0, 0], size: 4.8 };
     case "BACK_PRINT":
     case "BACK_FULL":
-      return { position: [0, 2.0, -5.32], rotation: [0, Math.PI, 0], size: 9 };
+      return { position: [0, 1.8, -5.32], rotation: [0, Math.PI, 0], size: 14.5 };
     case "CHEST_CENTER":
     default:
-      return { position: [0, 1.1, 5.02], rotation: [0, 0, 0], size: 8.5 };
+      return { position: [0, 0.8, 5.02], rotation: [0, 0, 0], size: 13.5 };
   }
 }
 
@@ -61,26 +60,6 @@ const FONT_WEIGHT = {
   Arial: "700",
   "Courier New": "700",
 };
-
-function wrapText(ctx, str, x, y, maxWidth, lineHeight) {
-  const words = String(str).split(" ");
-  let line = "";
-  const lines = [];
-  for (const w of words) {
-    const test = line ? line + " " + w : w;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      lines.push(line);
-      line = w;
-    } else line = test;
-  }
-  if (line) lines.push(line);
-  const totalH = lines.length * lineHeight;
-  let curY = y - totalH / 2 + lineHeight / 2;
-  for (const l of lines) {
-    ctx.fillText(l, x, curY);
-    curY += lineHeight;
-  }
-}
 
 function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, size = "M", garmentType = "ROUND_NECK" }) {
   const { scene } = useGLTF(MODEL_URL);
@@ -137,7 +116,7 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     };
   }, [avatar?.imageUrl]);
 
-  // ---- avatar texture (transparent, does not block text updates) ----
+  // ---- avatar / graphic texture with full end-to-end canvas coverage ----
   const [avatarTex, setAvatarTex] = useState(null);
   useEffect(() => {
     if (!avatarImg) {
@@ -152,7 +131,27 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     canvas.height = 1024;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, 1024, 1024);
-    ctx.drawImage(avatarImg, 256, 256, 512, 512);
+
+    // Natural aspect ratio preserved, fitting 100% of the canvas end-to-end
+    const naturalW = avatarImg.naturalWidth || avatarImg.width || 1024;
+    const naturalH = avatarImg.naturalHeight || avatarImg.height || 1024;
+    const aspect = naturalW / naturalH;
+    let drawW = 1024;
+    let drawH = 1024;
+    let drawX = 0;
+    let drawY = 0;
+
+    if (aspect > 1) {
+      // Wider than tall: fit full width (1024), center vertically
+      drawH = Math.round(1024 / aspect);
+      drawY = Math.round((1024 - drawH) / 2);
+    } else {
+      // Taller than wide: fit full height (1024), center horizontally
+      drawW = Math.round(1024 * aspect);
+      drawX = Math.round((1024 - drawW) / 2);
+    }
+
+    ctx.drawImage(avatarImg, drawX, drawY, drawW, drawH);
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
@@ -165,7 +164,7 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     });
   }, [avatarImg]);
 
-  // ---- text texture via CanvasTexture — real system-font support + size slider ----
+  // ---- text texture via CanvasTexture ----
   const [textTex, setTextTex] = useState(null);
   useEffect(() => {
     const hasText = !!(text && String(text).trim().length > 0);
@@ -178,8 +177,8 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     }
     let cancelled = false;
     const safeFont = font && String(font).trim() ? String(font).trim() : "Bebas Neue";
-    const rawSize = Number(fontSize) || 96;
-    const px = Math.max(32, Math.min(160, rawSize));
+    const rawSize = Number(fontSize) || 110;
+    const px = Math.max(48, Math.min(180, rawSize));
     const wt = FONT_WEIGHT[safeFont] || "700";
     const fill = readableTextColor(color);
     const doDraw = () => {
@@ -237,7 +236,7 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     return () => { cancelled = true; };
   }, [text, font, fontSize, color]);
 
-  // Apply the solid garment color to the fabric (matte finish) + push it slightly back to avoid z-fight.
+  // Apply the solid garment color to the fabric (matte finish)
   useEffect(() => {
     cloned.traverse((o) => {
       if (o.isMesh && o.material) {
@@ -273,19 +272,18 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     ];
   }, [tf, chestWidthFactor, lengthFactor, chestDepthFactor]);
 
-  // printScale: DTF size multiplier (0.4..4.0), isolated — only scales decal planes, never garment/camera
+  // printScale: DTF size multiplier (0.4..4.0), isolated — scales decal planes
   const ps = Math.max(0.4, Math.min(4.0, Number(printScale ?? 1) || 1));
   const hasTextTex = !!textTex;
   const hasAvatar = !!avatarTex;
-  const hasText = !!(text && String(text).trim().length > 0);
-  // Avatar above, text below — scaled by DTF print scale; physical decal size relative to garment
-  const avatarPlane = (hasText ? tf.size * 0.58 : tf.size * 0.78) * ps;
-  // text plane size covers the 1024 canvas — shrink it so the glyph size is controlled by px above + size scaling
-  const textPlane = tf.size * 0.88 * ps;
+
+  // Decal planes scaled to cover full chest box end-to-end
+  const avatarPlane = (hasTextTex ? tf.size * 0.72 : tf.size * 1.0) * ps;
+  const textPlane = tf.size * 0.95 * ps;
 
   return (
     <group scale={scale} position={[0, 0.1, 0]}>
-      {/* Real-world garment scaling: S=38" to XXL=46", plus oversized drop-shoulder / hoodie silhouette */}
+      {/* Real-world garment scaling */}
       <group scale={[chestWidthFactor, lengthFactor, chestDepthFactor]}>
         <primitive object={cloned} position={[-center.x, -center.y, -center.z]} />
       </group>
@@ -323,7 +321,7 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
   );
 }
 
-export default function TshirtViewer({ color, avatar, zone, text, font, fontSize = 96, printScale = 1, size = "M", garmentType = "ROUND_NECK" }) {
+export default function TshirtViewer({ color, avatar, zone, text, font, fontSize = 110, printScale = 1, size = "M", garmentType = "ROUND_NECK" }) {
   const sizeSpec = SIZE_SPECS[size] || SIZE_SPECS.M;
   const garmentProfile = GARMENT_PROFILES[garmentType] || GARMENT_PROFILES.ROUND_NECK;
 

@@ -37,13 +37,13 @@
         B&D
       </div>
       <span class="text-xs font-semibold tracking-wider uppercase text-zinc-400">
-        Interactive Design Prototype · <span class="text-white font-mono">v1.1 (Collapsible DTF Quality)</span>
+        Interactive Design Prototype · <span class="text-white font-mono">v1.2 (End-to-End Coverage & Drop Cancel)</span>
       </span>
     </div>
     <div class="flex items-center gap-3 text-xs">
       <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-400 text-[11px] font-medium">
         <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        Quality Controls Collapsible
+        Clean Blank by Default
       </span>
       <button onclick="resetPrototype()" class="rounded-lg border border-white/15 px-2.5 py-1 text-zinc-400 hover:text-white hover:border-white/30 transition">
         Reset State
@@ -99,7 +99,7 @@
           <!-- Background Radial Light -->
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.06)_0%,transparent_70%)] pointer-events-none"></div>
           
-          <!-- Garment Representation (SVG/Vector Silhouette with Live Color Switching) -->
+          <!-- Garment Representation -->
           <div class="relative w-4/5 max-w-[380px] transition-all duration-300 transform" id="garment-render">
             <!-- T-Shirt Silhouette Vector -->
             <svg id="tshirt-vector" viewBox="0 0 400 440" class="w-full h-auto drop-shadow-[0_25px_35px_rgba(0,0,0,0.8)] transition-all duration-300">
@@ -115,20 +115,17 @@
                   <stop offset="100%" stop-color="#dcdde0" />
                 </linearGradient>
               </defs>
-              <!-- Garment path -->
               <path id="tshirt-path" d="M125,50 C145,75 255,75 275,50 L365,100 L325,185 L285,160 L285,395 C285,405 115,405 115,395 L115,160 L75,185 L35,100 Z" 
                     fill="url(#fabricShadingDark)" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
-              <!-- Collar ring -->
               <path id="tshirt-collar" d="M125,50 C145,75 255,75 275,50 C250,90 150,90 125,50 Z" 
                     fill="#151518" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
             </svg>
 
-            <!-- Decal Print (Center Chest DTF Position) -->
-            <div id="print-decal" class="absolute top-[32%] left-1/2 -translate-x-1/2 w-[46%] aspect-square flex flex-col items-center justify-center p-3 text-center transition-all duration-300">
+            <!-- Decal Print (Center Chest DTF Position - Full A3 Box Coverage) -->
+            <div id="print-decal" class="absolute top-[26%] left-1/2 -translate-x-1/2 w-[60%] aspect-[3/4] flex flex-col items-center justify-center p-1 text-center transition-all duration-300">
               <div id="decal-content" class="w-full h-full flex flex-col items-center justify-center">
-                <!-- Drop Graphic Artwork Preview -->
-                <div id="graphic-art" class="font-black text-2xl tracking-[0.25em] text-white uppercase leading-none drop-shadow-md">
-                  VOID<br><span class="text-xs font-mono tracking-widest text-zinc-300">ARCHIVE 01</span>
+                <div id="graphic-art" class="font-black text-2xl tracking-[0.25em] text-white uppercase leading-none drop-shadow-md w-full h-full flex flex-col items-center justify-center">
+                  <!-- Empty by default: clean blank tee -->
                 </div>
               </div>
             </div>
@@ -143,7 +140,7 @@
 
           <!-- Bottom Floating 3D Hint -->
           <div class="absolute bottom-4 left-4 right-4 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-            <span>DTF SIZE: A3 CHEST COVERAGE</span>
+            <span>DTF SIZE: A3 FULL CHEST COVERAGE</span>
             <span>240 GSM COMBED COTTON</span>
           </div>
         </div>
@@ -207,7 +204,7 @@
         <div class="rounded-2xl border border-white/10 bg-[#0c0c0e] p-6 space-y-5">
           <div class="flex items-center justify-between border-b border-white/10 pb-4">
             <span class="text-xs font-mono text-zinc-400 tracking-wider">02 / ARTWORK & PRINTS</span>
-            <span class="text-xs text-zinc-500">Center Chest DTF</span>
+            <span id="badge-art-status" class="text-xs text-zinc-400 font-mono">Clean Blank (No Print)</span>
           </div>
 
           <!-- Mode Toggle: Curated Drops vs Upload -->
@@ -216,25 +213,37 @@
             <button onclick="setArtMode('upload')" id="tab-upload" class="rounded-lg py-1.5 text-xs font-medium text-zinc-400 hover:text-white">Upload Graphic</button>
           </div>
 
-          <!-- Drops Selector -->
-          <div id="section-drops" class="space-y-2">
-            <div class="grid grid-cols-3 gap-2">
-              <button onclick="selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>')" class="rounded-xl border border-white bg-white/10 p-2.5 text-center transition">
-                <div class="text-xs font-bold text-white">Drop 01</div>
-                <div class="text-[10px] text-zinc-400 mt-0.5">Void Archive</div>
+          <!-- Drops Selector with Cancel / Clean Blank Option -->
+          <div id="section-drops" class="space-y-3">
+            <div class="grid grid-cols-4 gap-2">
+              <button onclick="clearDrop()" id="btn-drop-none" class="rounded-xl border border-white bg-white/20 p-2 text-center transition ring-1 ring-white/40">
+                <div class="text-[11px] font-bold text-white">Clean Blank</div>
+                <div class="text-[9px] text-zinc-400 mt-0.5">No Print</div>
               </button>
-              <button onclick="selectDrop('CYBER KANJI', '<span class=\'text-2xl\'>東京</span><br><span class=\'text-[10px] tracking-[0.3em]\'>NOIR EDITION</span>')" class="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center hover:border-white/20 transition">
-                <div class="text-xs font-bold text-white">Drop 02</div>
-                <div class="text-[10px] text-zinc-400 mt-0.5">Tokyo Kanji</div>
+              <button onclick="selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>', this)" class="drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition">
+                <div class="text-[11px] font-bold text-white">Drop 01</div>
+                <div class="text-[9px] text-zinc-400 mt-0.5">Void</div>
               </button>
-              <button onclick="selectDrop('BRUTALIST CIPHER', 'B & D<br><span class=\'text-[9px] tracking-widest font-mono text-zinc-400\'>// 240 GSM</span>')" class="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center hover:border-white/20 transition">
-                <div class="text-xs font-bold text-white">Drop 03</div>
-                <div class="text-[10px] text-zinc-400 mt-0.5">Cipher Mark</div>
+              <button onclick="selectDrop('CYBER KANJI', '<span class=\'text-2xl\'>東京</span><br><span class=\'text-[10px] tracking-[0.3em]\'>NOIR</span>', this)" class="drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition">
+                <div class="text-[11px] font-bold text-white">Drop 02</div>
+                <div class="text-[9px] text-zinc-400 mt-0.5">Tokyo</div>
+              </button>
+              <button onclick="selectDrop('BRUTALIST CIPHER', 'B & D<br><span class=\'text-[9px] tracking-widest font-mono text-zinc-400\'>// 240 GSM</span>', this)" class="drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition">
+                <div class="text-[11px] font-bold text-white">Drop 03</div>
+                <div class="text-[9px] text-zinc-400 mt-0.5">Cipher</div>
+              </button>
+            </div>
+
+            <!-- Active Drop Pill with Cancel Button -->
+            <div id="active-drop-pill" class="hidden flex items-center justify-between rounded-xl border border-white/15 bg-white/[0.03] px-3.5 py-2 text-xs">
+              <span class="text-zinc-300 font-medium">Active: <strong id="active-drop-name" class="text-white"></strong></span>
+              <button onclick="clearDrop()" class="text-xs text-zinc-400 hover:text-white underline decoration-white/20 underline-offset-4 flex items-center gap-1">
+                Remove / Cancel Drop ✕
               </button>
             </div>
           </div>
 
-          <!-- Upload Dropzone (with Auto-Map + Hidden-by-Default Quality Controls) -->
+          <!-- Upload Dropzone (End-to-End Chest Mapping + Hidden-by-Default Controls) -->
           <div id="section-upload" class="hidden space-y-3">
             
             <!-- Upload Box (Shown when no upload) -->
@@ -244,7 +253,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
                 <span class="text-xs font-semibold text-white">Upload Your Artwork or Logo</span>
-                <span class="text-[11px] text-zinc-500 mt-1">Automatic transparent background knockout · Chest DTF</span>
+                <span class="text-[11px] text-zinc-500 mt-1">Full chest box coverage · Auto knockout</span>
                 <input type="file" accept="image/*" class="hidden" onchange="handleSimulatedUpload(event)">
               </label>
             </div>
@@ -258,11 +267,11 @@
                 <div class="min-w-0">
                   <div id="upload-filename" class="text-xs font-semibold text-white truncate max-w-[160px]">custom_graphic.png</div>
                   <div class="text-[11px] text-emerald-400 flex items-center gap-1">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Mapped to Chest DTF
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Full Chest DTF Mapped
                   </div>
                 </div>
               </div>
-              <button onclick="clearSimulatedUpload()" class="text-xs text-zinc-400 hover:text-white underline decoration-white/20 underline-offset-4">Replace</button>
+              <button onclick="clearSimulatedUpload()" class="text-xs text-zinc-400 hover:text-white underline decoration-white/20 underline-offset-4">Remove / Replace</button>
             </div>
 
             <!-- Collapsible Advanced Quality & DTF Controls (HIDDEN BY DEFAULT) -->
@@ -417,13 +426,13 @@
   </div>
 
   <script>
-    // State management for prototype
+    // State management: starts with CLEAN BLANK (dropTitle: null)
     let state = {
       shade: 'black',
       silhouette: 'oversized',
       price: 999,
       artMode: 'drops',
-      dropTitle: 'VOID ARCHIVE 01',
+      dropTitle: null,
       selectedSize: 'L',
       chestSize: 42,
       bagCount: 0,
@@ -466,7 +475,6 @@
       const badge = document.getElementById('badge-silhouette');
       const render = document.getElementById('garment-render');
 
-      // Update button styles
       ['oversized', 'classic', 'hoodie'].forEach(t => {
         const btn = document.getElementById(`btn-cut-${t}`);
         if (t === type) {
@@ -509,10 +517,35 @@
       }
     }
 
-    function selectDrop(title, html) {
+    function clearDrop() {
+      state.dropTitle = null;
+      document.getElementById('graphic-art').innerHTML = '';
+      document.getElementById('active-drop-pill').classList.add('hidden');
+      document.getElementById('btn-drop-none').className = 'rounded-xl border border-white bg-white/20 p-2 text-center transition ring-1 ring-white/40';
+      document.querySelectorAll('.drop-btn').forEach(b => {
+        b.className = 'drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition';
+      });
+      document.getElementById('badge-art-status').innerText = 'Clean Blank (No Print)';
+      showToast('Clean blank tee (no graphic print)');
+    }
+
+    function selectDrop(title, html, btn) {
+      if (state.dropTitle === title) {
+        clearDrop();
+        return;
+      }
       state.dropTitle = title;
       const graphic = document.getElementById('graphic-art');
       graphic.innerHTML = html;
+      document.getElementById('active-drop-pill').classList.remove('hidden');
+      document.getElementById('active-drop-name').innerText = title;
+      document.getElementById('badge-art-status').innerText = '+₹199 DTF Chest Print';
+
+      document.getElementById('btn-drop-none').className = 'rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition';
+      document.querySelectorAll('.drop-btn').forEach(b => {
+        b.className = 'drop-btn rounded-xl border border-white/10 bg-white/[0.02] p-2 text-center hover:border-white/20 transition';
+      });
+      if (btn) btn.className = 'drop-btn rounded-xl border border-white bg-white/20 p-2 text-center transition ring-1 ring-white/40';
       showToast(`Applied: ${title}`);
     }
 
@@ -521,22 +554,24 @@
       if (file) {
         const url = URL.createObjectURL(file);
         state.uploadedImageUrl = url;
+        state.dropTitle = null;
         
-        // 1. Map directly to chest DTF
+        // 1. Map directly to chest DTF - covers end-to-end box
         const graphic = document.getElementById('graphic-art');
-        graphic.innerHTML = `<img src="${url}" class="max-h-24 max-w-full object-contain filter contrast-125" alt="upload" />`;
+        graphic.innerHTML = `<img src="${url}" class="max-h-full max-w-full w-full h-full object-contain filter contrast-125" alt="upload" />`;
         
         // 2. Hide upload dropzone, reveal success bar & advanced wrapper
         document.getElementById('upload-box').classList.add('hidden');
         document.getElementById('upload-success-bar').classList.remove('hidden');
         document.getElementById('thumb-img').src = url;
         document.getElementById('upload-filename').innerText = file.name || 'custom_graphic.png';
+        document.getElementById('badge-art-status').innerText = '+₹199 DTF Custom Print';
         
         // 3. Show the advanced DTF wrapper, but keep it COLLAPSED by default
         document.getElementById('advanced-dtf-wrapper').classList.remove('hidden');
         collapseDtfSettings();
 
-        showToast('Mapped to chest! Quality settings ready (collapsed).');
+        showToast('Full chest box mapped! Quality settings ready (collapsed).');
       }
     }
 
@@ -546,7 +581,7 @@
       document.getElementById('upload-success-bar').classList.add('hidden');
       document.getElementById('advanced-dtf-wrapper').classList.add('hidden');
       collapseDtfSettings();
-      selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>');
+      clearDrop();
     }
 
     function toggleDtfSettings() {
@@ -648,8 +683,8 @@
       state.bagCount = 0;
       document.getElementById('bag-count').innerText = 0;
       clearSimulatedUpload();
-      selectDrop('VOID ARCHIVE 01', 'VOID<br><span class=\'text-xs font-mono tracking-widest text-zinc-300\'>ARCHIVE 01</span>');
-      showToast('Prototype state reset to default');
+      clearDrop();
+      showToast('Prototype state reset to clean blank');
     }
   </script>
 </body>
