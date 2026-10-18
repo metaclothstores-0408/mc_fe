@@ -92,7 +92,7 @@ export const colors = [
 export const sizes = ["S", "M", "L", "XL", "XXL"];
 
 export const zones = [
+  { id: "BACK_FULL", label: "Back Full" },
   { id: "CHEST_CENTER", label: "Chest Center" },
-  { id: "POCKET_LEFT", label: "Pocket Left" },
-  { id: "BACK_FULL", label: "Back Full" }
+  { id: "POCKET_LEFT", label: "Pocket Left" }
 ];

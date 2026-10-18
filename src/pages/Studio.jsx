@@ -59,6 +59,7 @@ export default function Studio({ addToCart, notify }) {
 
   // Crop Modal State & Raw File Tracking
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropSettings, setCropSettings] = useState({ zoom: 1, pan: { x: 0, y: 0 } });
   const [cropSourceData, setCropSourceData] = useState({
     src: null,
     file: null,
@@ -138,6 +139,8 @@ export default function Studio({ addToCart, notify }) {
         height: h,
         name: file.name
       });
+      // Reset crop settings to initial 1x center for brand new uploads
+      setCropSettings({ zoom: 1, pan: { x: 0, y: 0 } });
 
       // If image is not balanced boxy (outside 0.92 .. 1.08 range, e.g. 736x1308)
       if (ratio < 0.92 || ratio > 1.08) {
@@ -166,8 +169,8 @@ export default function Studio({ addToCart, notify }) {
     reader.readAsDataURL(file);
   };
 
-  // Confirm crop from ImageCropModal
-  const handleConfirmCrop = (croppedBlob, croppedDataUrl) => {
+  // Confirm crop from ImageCropModal — preserves zoom and pan for minute adjustments
+  const handleConfirmCrop = (croppedBlob, croppedDataUrl, newCropSettings) => {
     if (uploadedObjectUrlRef.current) {
       URL.revokeObjectURL(uploadedObjectUrlRef.current);
     }
@@ -175,6 +178,9 @@ export default function Studio({ addToCart, notify }) {
     uploadedObjectUrlRef.current = newUrl;
     setUploadedUrl(newUrl);
     setUploadedDataUrl(croppedDataUrl);
+    if (newCropSettings) {
+      setCropSettings(newCropSettings);
+    }
     setSelectedDrop(null);
     setArtMode("upload");
     setIsCropModalOpen(false);
@@ -696,7 +702,7 @@ export default function Studio({ addToCart, notify }) {
             </div>
             {hasArt ? (
               <div className="mt-2 flex justify-between text-xs text-zinc-400">
-                <span>DTF Chest Transfer ({selectedDrop ? selectedDrop.title : "Custom Upload"})</span>
+                <span>DTF Back Transfer ({selectedDrop ? selectedDrop.title : "Custom Upload"})</span>
                 <span>{money(printSurcharge)}</span>
               </div>
             ) : (
@@ -799,6 +805,7 @@ export default function Studio({ addToCart, notify }) {
         imageSrc={cropSourceData.src}
         fileName={cropSourceData.name}
         dimensions={{ width: cropSourceData.width, height: cropSourceData.height }}
+        initialCropSettings={cropSettings}
         onConfirmCrop={handleConfirmCrop}
         onCancel={() => setIsCropModalOpen(false)}
       />

@@ -70,7 +70,7 @@ export default function DtfPrintPanel(p) {
           <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/10 text-[10px] font-bold text-white">DTF</span>
           <div>
             <h2 className="text-sm font-semibold leading-none text-white">Custom Graphic Upload</h2>
-            <p className="mt-1 text-[11px] text-zinc-500">Center chest DTF transfer · Tirupur press</p>
+            <p className="mt-1 text-[11px] text-zinc-500">Oversized back DTF transfer · Tirupur press</p>
           </div>
         </div>
         <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300">
@@ -111,7 +111,7 @@ export default function DtfPrintPanel(p) {
                 </div>
                 <div className="text-[11px] text-emerald-400 flex items-center gap-1.5 mt-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Mapped to Chest DTF (A3)</span>
+                  <span>Mapped to Back DTF (A3)</span>
                 </div>
               </div>
             </div>

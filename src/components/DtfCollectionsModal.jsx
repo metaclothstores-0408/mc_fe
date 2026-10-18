@@ -426,3 +426,4 @@ export default function DtfCollectionsModal({
     </div>
   );
 }
+

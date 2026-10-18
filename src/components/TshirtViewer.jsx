@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useState, useRef } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -36,17 +36,17 @@ function readableTextColor(hex) {
 // Measured from tshirt.glb via GLTFLoader:
 // Box min (-11.84,41.50,-7.09) max (11.93,66.15,3.55) center (0.04,53.83,-1.77)
 // After centering, shirt centered span ~[-11.9,11.9] x [-12.3,12.3] x [-5.3,5.3]
-// CHEST_CENTER scaled to size 13.5 to achieve full end-to-end chest coverage (~58% of chest width)
+// BACK_FULL is the primary streetwear statement canvas (size 14.5 covers shoulder to mid-back)
 function zoneTransform(zoneId) {
   switch (zoneId) {
     case "POCKET_LEFT":
       return { position: [-3.8, 1.0, 4.95], rotation: [0, 0, 0], size: 4.8 };
+    case "CHEST_CENTER":
+      return { position: [0, 0.8, 5.02], rotation: [0, 0, 0], size: 13.5 };
     case "BACK_PRINT":
     case "BACK_FULL":
-      return { position: [0, 1.8, -5.32], rotation: [0, Math.PI, 0], size: 14.5 };
-    case "CHEST_CENTER":
     default:
-      return { position: [0, 0.8, 5.02], rotation: [0, 0, 0], size: 13.5 };
+      return { position: [0, 1.2, -5.32], rotation: [0, Math.PI, 0], size: 14.5 };
   }
 }
 
@@ -321,14 +321,63 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
   );
 }
 
-export default function TshirtViewer({ color, avatar, zone, text, font, fontSize = 110, printScale = 1, size = "M", garmentType = "ROUND_NECK" }) {
+function CameraAndControls({ viewMode = "back" }) {
+  const { camera } = useThree();
+  const controlsRef = useRef();
+
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    if (viewMode === "front") {
+      camera.position.set(0, 0, 4.2);
+    } else {
+      camera.position.set(0, 0, -4.2);
+    }
+    camera.lookAt(0, 0, 0);
+    controlsRef.current.target.set(0, 0, 0);
+    controlsRef.current.update();
+  }, [viewMode, camera]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enablePan={false}
+      enableZoom
+      minDistance={2.5}
+      maxDistance={7}
+      autoRotate={false}
+    />
+  );
+}
+
+export default function TshirtViewer({
+  color,
+  avatar,
+  zone,
+  text,
+  font,
+  fontSize = 110,
+  printScale = 1,
+  size = "M",
+  garmentType = "ROUND_NECK",
+  defaultView = "back"
+}) {
   const sizeSpec = SIZE_SPECS[size] || SIZE_SPECS.M;
   const garmentProfile = GARMENT_PROFILES[garmentType] || GARMENT_PROFILES.ROUND_NECK;
+  const isBackZone = zone?.id === "BACK_FULL" || zone?.id === "BACK_PRINT" || !zone?.id;
+  const [viewMode, setViewMode] = useState(defaultView || (isBackZone ? "back" : "front"));
+
+  useEffect(() => {
+    if (zone?.id === "CHEST_CENTER" || zone?.id === "POCKET_LEFT") {
+      setViewMode("front");
+    } else if (zone?.id === "BACK_FULL" || zone?.id === "BACK_PRINT") {
+      setViewMode("back");
+    }
+  }, [zone?.id]);
 
   return (
     <div className="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[1.4rem] bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f2f2f5_55%,#d8d8de_100%)] shadow-[inset_0_0_80px_rgba(0,0,0,.08)]">
       <Canvas
-        camera={{ position: [0, 0, 4.2], fov: 42 }}
+        camera={{ position: [0, 0, -4.2], fov: 42 }}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true }}
         style={{ position: "absolute", inset: 0 }}
@@ -336,6 +385,7 @@ export default function TshirtViewer({ color, avatar, zone, text, font, fontSize
         <ambientLight intensity={0.9} />
         <directionalLight position={[3, 5, 4]} intensity={1.15} />
         <directionalLight position={[-4, 2, 2]} intensity={0.45} />
+        <directionalLight position={[0, 4, -4]} intensity={1.1} />
         <Suspense fallback={null}>
           <ShirtModel
             color={color}
@@ -358,23 +408,40 @@ export default function TshirtViewer({ color, avatar, zone, text, font, fontSize
             color="#000000"
           />
         </Suspense>
-        <OrbitControls
-          enablePan={false}
-          enableZoom
-          minDistance={3}
-          maxDistance={7}
-          autoRotate={!avatar && !(text && String(text).trim())}
-          autoRotateSpeed={1.2}
-        />
+        <CameraAndControls viewMode={viewMode} />
       </Canvas>
 
-      <div className="absolute left-4 top-4 rounded-lg border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-medium tracking-wide text-zinc-700 backdrop-blur shadow-sm flex items-center gap-1.5">
+      {/* Top Left: Fit Spec Badge */}
+      <div className="absolute left-4 top-4 rounded-lg border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-medium tracking-wide text-zinc-700 backdrop-blur shadow-sm flex items-center gap-1.5 z-10">
         <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
         <span>Fit: <strong className="font-semibold text-zinc-900">{sizeSpec.label}</strong> ({sizeSpec.chest}″) · {garmentProfile.label}</span>
       </div>
 
-      <div className="absolute right-4 top-4 rounded-lg border border-black/10 bg-white/60 px-3 py-1.5 text-[10px] uppercase tracking-wider text-zinc-600 backdrop-blur">
-        Drag to rotate · scroll to zoom
+      {/* Top Right: Front / Back View Switcher */}
+      <div className="absolute right-4 top-4 flex items-center rounded-xl border border-black/15 bg-white/80 p-0.5 backdrop-blur shadow-sm text-xs font-semibold z-10">
+        <button
+          type="button"
+          onClick={() => setViewMode("back")}
+          className={`px-3 py-1 rounded-lg transition ${
+            viewMode === "back" ? "bg-black text-white shadow-sm" : "text-zinc-600 hover:text-black"
+          }`}
+        >
+          Back View
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("front")}
+          className={`px-3 py-1 rounded-lg transition ${
+            viewMode === "front" ? "bg-black text-white shadow-sm" : "text-zinc-600 hover:text-black"
+          }`}
+        >
+          Front View
+        </button>
+      </div>
+
+      {/* Subtle Hint */}
+      <div className="absolute bottom-16 right-4 rounded-lg border border-black/10 bg-white/60 px-2.5 py-1 text-[9px] uppercase tracking-wider text-zinc-600 backdrop-blur pointer-events-none">
+        Drag to rotate 360°
       </div>
     </div>
   );
