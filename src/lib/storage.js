@@ -71,3 +71,48 @@ export function logoutUser() {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem("accessToken");
 }
+
+const SESSION_KEY = "mc_session_id_v1";
+const DTF_COLLECTIONS_KEY = "mc_dtf_collections_v1";
+
+export function getSessionId() {
+  let sid = localStorage.getItem(SESSION_KEY);
+  if (!sid) {
+    sid = "sess-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+    localStorage.setItem(SESSION_KEY, sid);
+  }
+  return sid;
+}
+
+export function getDtfCollections() {
+  try {
+    const list = JSON.parse(localStorage.getItem(DTF_COLLECTIONS_KEY) || "[]");
+    return Array.isArray(list) ? list.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDtfCollectionItem(item) {
+  const list = getDtfCollections();
+  const existingIdx = list.findIndex(c => c.id === item.id);
+  const now = new Date().toISOString();
+  const fullItem = {
+    ...item,
+    updatedAt: now,
+    createdAt: item.createdAt || now,
+  };
+  if (existingIdx >= 0) {
+    list[existingIdx] = fullItem;
+  } else {
+    list.unshift(fullItem);
+  }
+  localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
+  return list;
+}
+
+export function deleteDtfCollectionItem(id) {
+  const list = getDtfCollections().filter(c => String(c.id) !== String(id));
+  localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
+  return list;
+}

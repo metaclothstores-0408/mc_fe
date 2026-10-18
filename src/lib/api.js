@@ -210,6 +210,34 @@ deleteAdminUser: (id) =>
     }
     return await res.blob();
   },
+
+  // =========================
+  // DTF COLLECTIONS & VERSIONS
+  // =========================
+  getDtfCollections: (sessionId) =>
+    request(`/api/v1/dtf-collections?sessionId=${encodeURIComponent(sessionId || "")}`, {
+      headers: sessionId ? { "X-Session-Id": sessionId } : {},
+    }),
+
+  saveDtfCollection: (data, sessionId) =>
+    request("/api/v1/dtf-collections", {
+      method: "POST",
+      headers: sessionId ? { "X-Session-Id": sessionId } : {},
+      body: JSON.stringify(data),
+    }),
+
+  updateDtfCollection: (id, data, sessionId) =>
+    request(`/api/v1/dtf-collections/${id}`, {
+      method: "PUT",
+      headers: sessionId ? { "X-Session-Id": sessionId } : {},
+      body: JSON.stringify(data),
+    }),
+
+  deleteDtfCollection: (id, sessionId) =>
+    request(`/api/v1/dtf-collections/${id}`, {
+      method: "DELETE",
+      headers: sessionId ? { "X-Session-Id": sessionId } : {},
+    }),
 };
 
 const API_BASE_URL =

@@ -1,18 +1,43 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, RotateCcw, ShoppingBag, Sparkles, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState, useMemo } from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  RotateCcw,
+  ShoppingBag,
+  Sparkles,
+  X,
+  Sliders,
+  Crop,
+  Scale
+} from "lucide-react";
 import DtfPrintPanel from "../components/DtfPrintPanel";
+import ImageCropModal from "../components/ImageCropModal";
+import DtfCollectionsModal from "../components/DtfCollectionsModal";
 import { colors, curatedDrops, garmentOptions, sizes, zones } from "../data/mock";
-import { money } from "../lib/storage";
+import {
+  money,
+  getSessionId,
+  getDtfCollections,
+  saveDtfCollectionItem,
+  deleteDtfCollectionItem
+} from "../lib/storage";
 import { computePrintWidthInches, getSheetPreset, processDtfImage } from "../lib/dtfProcessor";
+import { api } from "../lib/api";
 
 const TshirtViewer = lazy(() => import("../components/TshirtViewer"));
 
 export default function Studio({ addToCart, notify }) {
-  // 1. Garment and Shade
+  // 1. Garment and Shade State
   const [garment, setGarment] = useState(garmentOptions[0]); // Oversized Boxy Tee
   const [color, setColor] = useState(colors[0]); // Noir Black
   const [size, setSize] = useState("L"); // Default size
   const [zone, setZone] = useState(zones[0]); // Chest Center
+
+  // Collapsible Accordions: CLOSED BY DEFAULT per user request
+  const [isSilhouetteOpen, setIsSilhouetteOpen] = useState(false);
+  const [isShadeOpen, setIsShadeOpen] = useState(false);
 
   // 2. Artwork State: Mode can be "drops" or "upload"
   // Default to null so user starts with a pure clean blank garment without forced VOID drop
@@ -32,6 +57,22 @@ export default function Studio({ addToCart, notify }) {
   });
   const [processedUrl, setProcessedUrl] = useState(null);
 
+  // Crop Modal State & Raw File Tracking
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropSourceData, setCropSourceData] = useState({
+    src: null,
+    file: null,
+    width: 0,
+    height: 0,
+    name: "artwork.png"
+  });
+
+  // Saved DTF Collections & Versions State
+  const [collections, setCollections] = useState([]);
+  const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
+  const [isSavingVersion, setIsSavingVersion] = useState(false);
+  const [activeVersionId, setActiveVersionId] = useState(null);
+
   // Quick-Size Drawer State
   const [isSizeDrawerOpen, setIsSizeDrawerOpen] = useState(false);
 
@@ -39,6 +80,22 @@ export default function Studio({ addToCart, notify }) {
   const hasArt = (artMode === "upload" && !!uploadedUrl) || (artMode === "drops" && !!selectedDrop);
   const printSurcharge = hasArt ? 199 : 0;
   const total = garment.price + printSurcharge;
+
+  // Load collections on mount (Local cache first, then sync with backend API)
+  useEffect(() => {
+    const local = getDtfCollections();
+    setCollections(local);
+    const sid = getSessionId();
+    api.getDtfCollections(sid)
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          setCollections(res);
+        }
+      })
+      .catch(() => {
+        // Guest offline or backend unreachable; local storage suffices
+      });
+  }, []);
 
   // Real-time DTF image processing with debouncing
   const debounceRef = useRef(null);
@@ -64,10 +121,40 @@ export default function Studio({ addToCart, notify }) {
     };
   }, [uploadedUrl, dtf.stripColorHex, dtf.stripSensitivity, dtf.halftoneDensity]);
 
+  // Upload handler with automatic aspect ratio check
   const handleUpload = (file) => {
     if (!file) return;
-    if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
-    const url = URL.createObjectURL(file);
+    const tempUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const ratio = w / h;
+
+      setCropSourceData({
+        src: tempUrl,
+        file,
+        width: w,
+        height: h,
+        name: file.name
+      });
+
+      // If image is not balanced boxy (outside 0.92 .. 1.08 range, e.g. 736x1308)
+      if (ratio < 0.92 || ratio > 1.08) {
+        setIsCropModalOpen(true);
+        notify(`Non-boxy image detected (${w}×${h}). Aligning 1:1 boxy frame.`);
+      } else {
+        // Balanced square image: load directly
+        applyUploadedFile(file, tempUrl);
+      }
+    };
+    img.src = tempUrl;
+  };
+
+  const applyUploadedFile = (file, url) => {
+    if (uploadedObjectUrlRef.current && uploadedObjectUrlRef.current !== url) {
+      URL.revokeObjectURL(uploadedObjectUrlRef.current);
+    }
     uploadedObjectUrlRef.current = url;
     setUploadedUrl(url);
     setSelectedDrop(null);
@@ -79,6 +166,21 @@ export default function Studio({ addToCart, notify }) {
     reader.readAsDataURL(file);
   };
 
+  // Confirm crop from ImageCropModal
+  const handleConfirmCrop = (croppedBlob, croppedDataUrl) => {
+    if (uploadedObjectUrlRef.current) {
+      URL.revokeObjectURL(uploadedObjectUrlRef.current);
+    }
+    const newUrl = URL.createObjectURL(croppedBlob);
+    uploadedObjectUrlRef.current = newUrl;
+    setUploadedUrl(newUrl);
+    setUploadedDataUrl(croppedDataUrl);
+    setSelectedDrop(null);
+    setArtMode("upload");
+    setIsCropModalOpen(false);
+    notify("Framed to 1:1 boxy streetwear DTF cut.");
+  };
+
   const clearUpload = () => {
     if (uploadedObjectUrlRef.current) {
       URL.revokeObjectURL(uploadedObjectUrlRef.current);
@@ -88,6 +190,7 @@ export default function Studio({ addToCart, notify }) {
     setUploadedDataUrl(null);
     setProcessedUrl(null);
     setArtMode("drops");
+    setActiveVersionId(null);
   };
 
   useEffect(() => () => {
@@ -117,6 +220,119 @@ export default function Studio({ addToCart, notify }) {
       setArtMode("drops");
       clearUpload();
     }
+  };
+
+  // Auto-calculated version name
+  const activeFileName = cropSourceData.name || "custom_graphic.png";
+  const existingCount = collections.filter(c => c.originalFilename === activeFileName).length;
+  const nextVersionNum = existingCount + 1;
+  const suggestedVersionName = useMemo(() => {
+    const base = activeFileName.replace(/\.[^/.]+$/, "");
+    const dateStr = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    const timeStr = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    return `${base} · v${nextVersionNum} · ${dateStr}, ${timeStr}`;
+  }, [activeFileName, nextVersionNum]);
+
+  // Save current version to personal DTF collections
+  const handleSaveVersion = async () => {
+    if (!uploadedUrl) {
+      notify("Please upload or frame a graphic before saving a version.");
+      return;
+    }
+    setIsSavingVersion(true);
+    const sid = getSessionId();
+    const versionPayload = {
+      id: `dtf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sessionId: sid,
+      designName: suggestedVersionName,
+      originalFilename: activeFileName,
+      versionNumber: nextVersionNum,
+      imageDataUrl: uploadedDataUrl || uploadedUrl,
+      previewDataUrl: processedUrl || uploadedDataUrl || uploadedUrl,
+      selectedSheetPreset: dtf.selectedSheetPreset,
+      printScale: dtf.printScale ?? 1,
+      stripColorHex: dtf.stripColorHex,
+      stripSensitivity: dtf.stripSensitivity,
+      halftoneDensity: dtf.halftoneDensity,
+      garmentType: garment.type,
+      fabricColorName: color.name,
+      fabricColorHex: color.hex,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Immediately save to local storage for zero-latency instant response
+    const updated = saveDtfCollectionItem(versionPayload);
+    setCollections(updated);
+    setActiveVersionId(versionPayload.id);
+
+    // 2. Synchronize to backend database
+    try {
+      await api.saveDtfCollection(versionPayload, sid);
+    } catch {
+      // Offline / guest mode handled via local storage seamlessly
+    } finally {
+      setIsSavingVersion(false);
+      notify(`Saved to DTF Collections: v${nextVersionNum}`);
+    }
+  };
+
+  // Apply saved version directly into the 3D studio
+  const handleApplyVersion = (item) => {
+    // 1. Set Garment
+    const matchingGarment = garmentOptions.find(g => g.type === item.garmentType) || garmentOptions[0];
+    setGarment(matchingGarment);
+
+    // 2. Set Fabric Color
+    const matchingColor = colors.find(c => c.name === item.fabricColorName || c.hex === item.fabricColorHex) || colors[0];
+    setColor(matchingColor);
+
+    // 3. Set DTF Parameters
+    setDtf({
+      selectedSheetPreset: item.selectedSheetPreset || "A3",
+      stripColorHex: item.stripColorHex || "#ffffff",
+      stripSensitivity: item.stripSensitivity ?? 30,
+      halftoneDensity: item.halftoneDensity ?? 0,
+      printScale: item.printScale ?? 1,
+    });
+
+    // 4. Set Image
+    const targetImg = item.previewDataUrl || item.imageDataUrl;
+    if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
+    uploadedObjectUrlRef.current = null;
+    setUploadedUrl(targetImg);
+    setUploadedDataUrl(targetImg);
+    setProcessedUrl(item.previewDataUrl || targetImg);
+    setCropSourceData({
+      src: targetImg,
+      file: null,
+      width: 1024,
+      height: 1024,
+      name: item.originalFilename || "saved_version.png",
+    });
+
+    setSelectedDrop(null);
+    setArtMode("upload");
+    setActiveVersionId(item.id);
+    notify(`Loaded version: ${item.designName}`);
+  };
+
+  // Direct Add to Bag from Collection Version
+  const handleAddToCartVersion = (item) => {
+    handleApplyVersion(item);
+    setIsCollectionsModalOpen(false);
+    setIsSizeDrawerOpen(true);
+  };
+
+  // Delete saved version
+  const handleDeleteVersion = async (id) => {
+    const updated = deleteDtfCollectionItem(id);
+    setCollections(updated);
+    if (activeVersionId === id) setActiveVersionId(null);
+    try {
+      await api.deleteDtfCollection(id, getSessionId());
+    } catch (_) {}
+    notify("Removed version from collections.");
   };
 
   const handleOpenAdd = () => {
@@ -182,16 +398,31 @@ export default function Studio({ addToCart, notify }) {
   return (
     <div className="mc-container py-8 sm:py-12">
       {/* Page Header */}
-      <div className="mb-8">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400">
-          B&D Atelier · Tirupur Cotton
-        </p>
-        <h1 className="text-4xl font-black tracking-tight sm:text-5xl text-white">
-          Form Follows Shade.
-        </h1>
-        <p className="mt-2.5 max-w-2xl text-xs sm:text-sm leading-6 text-zinc-400">
-          Heavyweight monochrome blanks engineered for young adults. Pure black & white shades with zero dead stock.
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400">
+            B&D Atelier · Tirupur Cotton
+          </p>
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl text-white">
+            Form Follows Shade.
+          </h1>
+          <p className="mt-2.5 max-w-2xl text-xs sm:text-sm leading-6 text-zinc-400">
+            Heavyweight monochrome blanks engineered for young adults. Pure black & white shades with zero dead stock.
+          </p>
+        </div>
+
+        {/* Collections Drawer Pill Button */}
+        <button
+          type="button"
+          onClick={() => setIsCollectionsModalOpen(true)}
+          className="self-start md:self-auto flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 hover:border-white/30 transition shadow-sm"
+        >
+          <Layers size={15} className="text-zinc-300" />
+          <span>My DTF Collections</span>
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-mono font-bold">
+            {collections.length}
+          </span>
+        </button>
       </div>
 
       <div className="grid gap-8 xl:grid-cols-[1.35fr_380px]">
@@ -228,73 +459,119 @@ export default function Studio({ addToCart, notify }) {
           </div>
         </div>
 
-        {/* Right: Clean 2-Step Configuration Column */}
-        <div className="space-y-5">
+        {/* Right: Clean Configuration Column */}
+        <div className="space-y-4">
           
-          {/* Step 1: Silhouette Cut */}
-          <section className="mc-card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          {/* Step 1: Silhouette Cut (CLOSED BY DEFAULT) */}
+          <section className="mc-card overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsSilhouetteOpen(v => !v)}
+              className="w-full flex items-center justify-between p-4 text-left transition hover:bg-white/[0.02]"
+            >
+              <div className="flex items-center gap-2.5">
                 <span className="grid h-6 w-6 place-items-center rounded-lg bg-white/10 text-[10px] font-bold text-white">01</span>
-                <h2 className="text-sm font-semibold text-white">Garment Silhouette</h2>
+                <div>
+                  <h2 className="text-sm font-semibold text-white leading-none">Garment Silhouette</h2>
+                  <p className="text-[11px] font-mono text-zinc-400 mt-1">
+                    {garment.label} · {money(garment.price)}
+                  </p>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-zinc-500">{garment.gsm}</span>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              {garmentOptions.map(g => (
-                <button
-                  key={g.type}
-                  onClick={() => setGarment(g)}
-                  className={`rounded-xl border p-3 text-left transition ${
-                    garment.type === g.type
-                      ? "border-white bg-white/10 text-white"
-                      : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold">{g.label}</span>
-                    <span className="text-xs font-mono font-semibold">{money(g.price)}</span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
-                    <span>{g.description}</span>
-                    <span className="font-mono text-zinc-400">{g.gsm}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-mono text-zinc-300">
+                  {garment.gsm}
+                </span>
+                <span className="text-xs text-zinc-400 flex items-center gap-0.5">
+                  {isSilhouetteOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </span>
+              </div>
+            </button>
+
+            {isSilhouetteOpen && (
+              <div className="p-4 pt-1 border-t border-white/10 space-y-2">
+                <div className="grid grid-cols-1 gap-2">
+                  {garmentOptions.map(g => (
+                    <button
+                      key={g.type}
+                      type="button"
+                      onClick={() => setGarment(g)}
+                      className={`rounded-xl border p-3 text-left transition ${
+                        garment.type === g.type
+                          ? "border-white bg-white/10 text-white ring-1 ring-white/30"
+                          : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white">{g.label}</span>
+                        <span className="text-xs font-mono font-semibold text-zinc-300">{money(g.price)}</span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
+                        <span>{g.description}</span>
+                        <span className="font-mono text-zinc-400">{g.gsm}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
-          {/* Step 2: Monochrome Shade */}
-          <section className="mc-card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          {/* Step 2: Monochrome Shade (CLOSED BY DEFAULT) */}
+          <section className="mc-card overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsShadeOpen(v => !v)}
+              className="w-full flex items-center justify-between p-4 text-left transition hover:bg-white/[0.02]"
+            >
+              <div className="flex items-center gap-2.5">
                 <span className="grid h-6 w-6 place-items-center rounded-lg bg-white/10 text-[10px] font-bold text-white">02</span>
-                <h2 className="text-sm font-semibold text-white">Shade Selection</h2>
-              </div>
-              <span className="text-[11px] font-mono text-emerald-400">Ready Stock Tirupur</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {colors.map(c => (
-                <button
-                  key={c.name}
-                  onClick={() => setColor(c)}
-                  className={`flex items-center gap-3 rounded-xl border p-2.5 transition ${
-                    color.name === c.name
-                      ? "border-white bg-white/10 ring-1 ring-white/30"
-                      : "border-white/10 bg-white/[0.02] hover:border-white/20"
-                  }`}
-                >
+                <div className="flex items-center gap-2">
                   <span
-                    className="h-7 w-7 rounded-full border border-white/20 shadow-inner shrink-0"
-                    style={{ background: c.hex }}
+                    className="h-4 w-4 rounded-full border border-white/30 shadow-inner"
+                    style={{ background: color.hex }}
                   />
-                  <div className="text-left min-w-0">
-                    <div className="text-xs font-semibold text-white truncate">{c.name}</div>
-                    <div className="text-[10px] text-zinc-500 font-mono">{c.gsm}</div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white leading-none">Fabric Shade</h2>
+                    <p className="text-[11px] text-zinc-400 mt-1">
+                      {color.name} · Ready Stock Tirupur
+                    </p>
                   </div>
-                </button>
-              ))}
-            </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                <span className="text-[11px] font-mono text-zinc-500 hidden sm:inline">{color.gsm}</span>
+                {isShadeOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+            </button>
+
+            {isShadeOpen && (
+              <div className="p-4 pt-1 border-t border-white/10">
+                <div className="grid grid-cols-2 gap-2">
+                  {colors.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      className={`flex items-center gap-3 rounded-xl border p-2.5 transition ${
+                        color.name === c.name
+                          ? "border-white bg-white/10 ring-1 ring-white/30"
+                          : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                      }`}
+                    >
+                      <span
+                        className="h-6 w-6 rounded-full border border-white/20 shadow-inner shrink-0"
+                        style={{ background: c.hex }}
+                      />
+                      <div className="text-left min-w-0">
+                        <div className="text-xs font-semibold text-white truncate">{c.name}</div>
+                        <div className="text-[10px] text-zinc-500 font-mono">{c.gsm}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Step 3: Artwork — Curated Drops vs Custom Upload */}
@@ -385,7 +662,7 @@ export default function Studio({ addToCart, notify }) {
               </div>
             )}
 
-            {/* Custom Upload Panel with Hidden-by-Default Controls */}
+            {/* Custom Upload Panel with Auto-Crop, Hidden-by-Default Controls & Save Version */}
             {artMode === "upload" && (
               <DtfPrintPanel
                 value={dtf}
@@ -393,12 +670,20 @@ export default function Studio({ addToCart, notify }) {
                 hasSource={!!uploadedUrl}
                 previewUrl={processedUrl}
                 rawSourceUrl={uploadedDataUrl || uploadedUrl}
-                sourceLabel="Uploaded graphic"
+                sourceLabel={cropSourceData.name || "Uploaded graphic"}
                 onUpload={handleUpload}
                 onClearUpload={clearUpload}
                 uploadedUrl={uploadedUrl}
                 previewDataUrl={processedUrl}
                 uploadedDataUrl={uploadedDataUrl}
+                onOpenCrop={() => {
+                  if (cropSourceData.src) {
+                    setIsCropModalOpen(true);
+                  }
+                }}
+                onSaveVersion={handleSaveVersion}
+                isSavingVersion={isSavingVersion}
+                suggestedVersionName={suggestedVersionName}
               />
             )}
           </section>
@@ -507,6 +792,27 @@ export default function Studio({ addToCart, notify }) {
           </div>
         </div>
       )}
+
+      {/* Image Crop Modal for 1:1 Boxy Ratio Alignment */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        imageSrc={cropSourceData.src}
+        fileName={cropSourceData.name}
+        dimensions={{ width: cropSourceData.width, height: cropSourceData.height }}
+        onConfirmCrop={handleConfirmCrop}
+        onCancel={() => setIsCropModalOpen(false)}
+      />
+
+      {/* Saved DTF Collections & Versions Modal */}
+      <DtfCollectionsModal
+        isOpen={isCollectionsModalOpen}
+        onClose={() => setIsCollectionsModalOpen(false)}
+        collections={collections}
+        onApplyVersion={handleApplyVersion}
+        onAddToCartVersion={handleAddToCartVersion}
+        onDeleteVersion={handleDeleteVersion}
+        activeVersionId={activeVersionId}
+      />
     </div>
   );
 }

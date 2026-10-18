@@ -115,7 +115,17 @@ export default function DtfPrintPanel(p) {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
+              {p.onOpenCrop && (
+                <button
+                  type="button"
+                  onClick={p.onOpenCrop}
+                  className="text-xs font-medium text-zinc-300 hover:text-white underline decoration-white/20 underline-offset-4"
+                  title="Adjust 1:1 Boxy Framing"
+                >
+                  Adjust Crop
+                </button>
+              )}
               <label className="cursor-pointer text-xs font-medium text-zinc-300 hover:text-white underline decoration-white/20 underline-offset-4">
                 Replace
                 <input 
@@ -138,6 +148,26 @@ export default function DtfPrintPanel(p) {
                 <X size={14} />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Save Version Banner */}
+        {p.hasSource && p.onSaveVersion && (
+          <div className="flex items-center justify-between rounded-xl border border-white/15 bg-white/[0.04] p-3 text-xs">
+            <div className="min-w-0 pr-2">
+              <span className="block font-semibold text-white">Save Current DTF Version</span>
+              <span className="block text-[11px] font-mono text-zinc-400 truncate mt-0.5">
+                {p.suggestedVersionName || "Auto-tracked with date & time"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={p.onSaveVersion}
+              disabled={p.isSavingVersion}
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-bold transition shadow-sm disabled:opacity-50"
+            >
+              <span>{p.isSavingVersion ? "Saving…" : "Save Version"}</span>
+            </button>
           </div>
         )}
 
