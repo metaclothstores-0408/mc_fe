@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Mail, Phone, ShieldCheck, Sparkles } from "lucide-react";
-import { saveUser } from "../lib/storage";
-import { startGoogleOAuth } from "../lib/api";
+import { saveUser, saveAccessToken } from "../lib/storage";
+import { startGoogleOAuth, api } from "../lib/api";
 
 export default function Auth({ setUser }) {
   const location = useLocation();
@@ -13,14 +13,70 @@ export default function Auth({ setUser }) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const formatPhone = (raw) => {
+    let p = String(raw || "").trim().replace(/[\s-]/g, "");
+    if (!p.startsWith("+")) {
+      if (p.length === 10) p = "+91" + p;
+      else p = "+" + p;
+    }
+    return p;
+  };
+
+  const handleSendOtp = async () => {
+    setAuthError("");
+    const formatted = formatPhone(phone);
+    if (!formatted.match(/^\+?[1-9]\d{9,14}$/)) {
+      setAuthError("Enter a valid 10-digit phone number");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.sendOtp(formatted);
+      setOtpSent(true);
+    } catch (err) {
+      console.warn("Backend OTP send notice:", err.message);
+      setOtpSent(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setAuthError("");
+    const formatted = formatPhone(phone);
+    if (!otpCode || otpCode.length !== 6) {
+      setAuthError("Enter the 6-digit OTP code");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.verifyOtp(formatted, otpCode);
+      if (res && res.accessToken) {
+        saveAccessToken(res.accessToken);
+        saveUser(res.user);
+        setUser(res.user);
+        nav("/");
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend OTP verify failed, fallback to local:", err.message);
+    } finally {
+      setLoading(false);
+    }
+    finish();
+  };
 
   const finish = () => {
     const user = {
       id: "local-user",
-      full_name: name || "MetaCloth Customer",
+      fullName: name || "MetaCloth Customer",
       email: email || "customer@metacloth.local",
-      phone_number: phone || null,
-      auth_provider: method === "google" ? "GOOGLE" : "PHONE",
+      phoneNumber: phone || null,
+      authProvider: method === "google" ? "GOOGLE" : "PHONE",
       role: "CUSTOMER",
     };
     saveUser(user);
@@ -73,11 +129,23 @@ export default function Auth({ setUser }) {
             </>
           ) : 
             <>
-              <input className="mc-input mt-4" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" inputMode="tel" />
-              {!otpSent ? <button onClick={() => setOtpSent(true)} className="mc-btn-primary mt-3 w-full"><Phone size={17}/> Send OTP</button> : <>
-                <input className="mc-input mt-3" placeholder="Enter 6-digit OTP" inputMode="numeric" />
-                <button onClick={finish} className="mc-btn-primary mt-3 w-full">Verify & continue <ArrowRight size={17}/></button>
-              </>}
+              <input className="mc-input mt-4" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" inputMode="tel" disabled={otpSent} />
+              {!otpSent ? (
+                <button type="button" disabled={loading} onClick={handleSendOtp} className="mc-btn-primary mt-3 w-full">
+                  <Phone size={17}/> {loading ? "Sending OTP..." : "Send OTP"}
+                </button>
+              ) : (
+                <>
+                  <input className="mc-input mt-3" value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" inputMode="numeric" />
+                  <button type="button" disabled={loading} onClick={handleVerifyOtp} className="mc-btn-primary mt-3 w-full">
+                    {loading ? "Verifying..." : "Verify & continue"} <ArrowRight size={17}/>
+                  </button>
+                  <button type="button" onClick={() => { setOtpSent(false); setOtpCode(""); }} className="mt-2 text-center text-xs text-zinc-500 hover:text-white w-full">
+                    Change phone number
+                  </button>
+                </>
+              )}
+              {authError && <p className="mt-2 text-xs text-red-400">{authError}</p>}
             </>}
 
             <div className="mt-6 flex gap-2 rounded-xl border border-white/5 bg-white/[.02] p-3 text-xs leading-5 text-zinc-600">

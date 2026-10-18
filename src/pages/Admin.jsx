@@ -57,20 +57,49 @@ export default function Admin() {
 
   const navigate = useNavigate();
 
-  const orders = getOrders();
+  const [orders, setOrders] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
 
-  const revenue = orders.reduce(
-    (s, o) => s + Number(o.totalAmount || 0),
-    0
-  );
+  useEffect(() => {
+    let cancelled = false;
+    async function loadData() {
+      try {
+        const [ordRes, statsRes] = await Promise.allSettled([
+          api.getAdminOrders(),
+          api.getAdminDashboardStats()
+        ]);
+        if (cancelled) return;
+        if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) {
+          setOrders(ordRes.value);
+        } else {
+          setOrders(getOrders());
+        }
+        if (statsRes.status === "fulfilled" && statsRes.value) {
+          setDashboardStats(statsRes.value);
+        }
+      } catch {
+        if (!cancelled) setOrders(getOrders());
+      }
+    }
+    loadData();
+    return () => { cancelled = true; };
+  }, []);
+
+  const revenue = dashboardStats?.totalRevenue != null
+    ? Number(dashboardStats.totalRevenue)
+    : orders.reduce((s, o) => s + Number(o.totalAmount || 0), 0);
+
+  const totalOrdersCount = dashboardStats?.totalOrders != null
+    ? Number(dashboardStats.totalOrders)
+    : orders.length;
 
   const stats = [
     ["Revenue", money(revenue), IndianRupee],
-    ["Orders", orders.length, ClipboardList],
+    ["Orders", totalOrdersCount, ClipboardList],
     ["Products", products.length, Box],
     [
       "Delivered",
-      orders.filter((o) => o.status === "DELIVERED").length,
+      orders.filter((o) => (o.status || o.orderStatus) === "DELIVERED").length,
       PackageCheck,
     ],
   ];
@@ -522,7 +551,7 @@ export default function Admin() {
                       </td>
 
                       <td className="py-4 text-zinc-400">
-                        {o.shipping.name}
+                        {o.shipping?.name || o.shippingName || "Customer"}
                       </td>
 
                       <td className="py-4">
@@ -532,7 +561,7 @@ export default function Admin() {
                       <td className="py-4">
 
                         <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-xs text-violet-300">
-                          {o.status}
+                          {o.status || o.orderStatus || "PLACED"}
                         </span>
 
                       </td>

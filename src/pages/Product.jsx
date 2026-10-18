@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Minus, Plus, Sparkles, ShoppingBag, Star } from "lucide-react";
 import { products, sizes } from "../data/mock";
 import { money } from "../lib/storage";
+import { api } from "../lib/api";
 
 export default function Product({ addToCart, notify }) {
   const { id } = useParams();
@@ -29,18 +30,8 @@ useEffect(() => {
   const loadReviews = async () => {
     try {
       setReviewLoading(true);
-
-      const response = await fetch(
-        `http://localhost:8080/api/v1/products/${product.id}/reviews`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to load reviews");
-      }
-
-      const data = await response.json();
-
-      setReviews(data);
+      const data = await api.getProductReviews(product.id);
+      setReviews(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load reviews:", error);
     } finally {
@@ -53,7 +44,26 @@ useEffect(() => {
 
 const averageRating = reviews.length === 0 ? 0 : reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
 
-const submitReview = async () => { if (reviewRating === 0) { notify("Please select a rating"); return; } if (!reviewComment.trim()) { notify("Please write a review"); return; } try { setReviewSubmitting(true); const token = localStorage.getItem("accessToken"); const response = await fetch( `http://localhost:8080/api/v1/products/${product.id}/reviews`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, }, body: JSON.stringify({ rating: reviewRating, comment: reviewComment.trim(), }), } ); if (response.status === 401 || response.status === 403) { notify("Please login to submit a review"); return; } if (!response.ok) { throw new Error("Failed to submit review"); } const newReview = await response.json(); setReviews(prev => [newReview, ...prev]); setReviewRating(0); setReviewComment(""); notify("Review submitted successfully"); } catch (error) { console.error("Review submission failed:", error); notify("Unable to submit review"); } finally { setReviewSubmitting(false); } };
+const submitReview = async () => {
+  if (reviewRating === 0) { notify("Please select a rating"); return; }
+  if (!reviewComment.trim()) { notify("Please write a review"); return; }
+  try {
+    setReviewSubmitting(true);
+    const newReview = await api.createReview(product.id, {
+      rating: reviewRating,
+      comment: reviewComment.trim(),
+    });
+    setReviews(prev => [newReview, ...prev]);
+    setReviewRating(0);
+    setReviewComment("");
+    notify("Review submitted successfully");
+  } catch (error) {
+    console.error("Review submission failed:", error);
+    notify(error.message || "Unable to submit review");
+  } finally {
+    setReviewSubmitting(false);
+  }
+};
 
   if(!product) return <div className="mc-container py-20"><h1 className="text-2xl font-bold">Product not found.</h1><Link className="mt-5 inline-block text-violet-400" to="/shop">Back to shop</Link></div>;
 

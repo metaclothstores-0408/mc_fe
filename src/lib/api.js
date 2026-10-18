@@ -48,6 +48,30 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  sendOtp: (phoneNumber) =>
+    request("/api/v1/auth/otp/send", {
+      method: "POST",
+      body: JSON.stringify({ phoneNumber }),
+    }),
+
+  verifyOtp: (phoneNumber, otp) =>
+    request("/api/v1/auth/otp/verify", {
+      method: "POST",
+      body: JSON.stringify({ phoneNumber, otp }),
+    }),
+
+  signup: (data) =>
+    request("/api/v1/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  signin: (data) =>
+    request("/api/v1/auth/signin", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   // =========================
   // PRODUCTS
   // =========================

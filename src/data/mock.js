@@ -56,11 +56,28 @@ export const garmentOptions = [
 ];
 
 export const colors = [
-  { name: "Obsidian", hex: "#0B0B0C" },
-  { name: "Slate", hex: "#29292E" },
-  { name: "Stone", hex: "#A8A29E" },
-  { name: "White", hex: "#F4F4F5" },
-  { name: "Violet", hex: "#7C3AED" }
+  // Core Essentials (Available ready-stock 365 days in Tirupur)
+  { name: "Pitch Black", hex: "#0F0F10", category: "Core" },
+  { name: "Optic White", hex: "#FFFFFF", category: "Core" },
+  { name: "Off-White / Ecru", hex: "#F4F0E8", category: "Core" },
+  { name: "Charcoal Melange", hex: "#2B2B30", category: "Core" },
+  { name: "Grey Melange", hex: "#9E9E9E", category: "Core" },
+  { name: "Navy Blue", hex: "#131E3A", category: "Core" },
+
+  // Popular Tirupur Deep Tones
+  { name: "Bottle Green", hex: "#143525", category: "Deep" },
+  { name: "Military Olive", hex: "#4B5320", category: "Deep" },
+  { name: "Maroon Wine", hex: "#5C1624", category: "Deep" },
+  { name: "Royal Blue", hex: "#1A448C", category: "Deep" },
+  { name: "Postman Red", hex: "#C81D25", category: "Deep" },
+  { name: "Mustard Gold", hex: "#D49B26", category: "Deep" },
+  { name: "Coffee Brown", hex: "#38231B", category: "Deep" },
+
+  // Streetwear Oversized Pastels (High demand in modern Indian streetwear)
+  { name: "Lavender Lilac", hex: "#C4B5FD", category: "Pastel" },
+  { name: "Sage Mint", hex: "#9CAF88", category: "Pastel" },
+  { name: "Dusty Peach", hex: "#DE9E8E", category: "Pastel" },
+  { name: "Desert Sand", hex: "#D5C7B5", category: "Pastel" }
 ];
 
 export const sizes = ["S", "M", "L", "XL", "XXL"];

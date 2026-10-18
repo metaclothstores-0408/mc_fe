@@ -127,8 +127,8 @@ export default function Studio({ addToCart, notify }) {
     <div className="grid gap-8 xl:grid-cols-[1.35fr_380px]">
       <div className="xl:sticky xl:top-24 xl:self-start">
         <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-3 shadow-glow">
-          <Suspense fallback={<div className="grid aspect-[4/5] place-items-center rounded-[1.4rem] bg-[radial-gradient(circle_at_50%_28%,#fafafa_0%,#e4e4e7_45%,#a1a1aa_100%)] text-xs text-zinc-500">Loading 3D preview…</div>}>
-            <TshirtViewer color={color.hex} avatar={viewerAvatar} zone={zone} text={text} font={font} fontSize={fontSize} printScale={dtfSheetVisualScale} />
+          <Suspense fallback={<div className="grid aspect-[4/5] place-items-center rounded-[1.4rem] bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f2f2f5_55%,#d8d8de_100%)] text-xs text-zinc-500">Loading 3D preview…</div>}>
+            <TshirtViewer color={color.hex} avatar={viewerAvatar} zone={zone} text={text} font={font} fontSize={fontSize} printScale={dtfSheetVisualScale} size={size} garmentType={garment.type} />
           </Suspense>
           <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-xl border border-black/10 bg-white/55 px-4 py-3 backdrop-blur"><span className="text-xs text-zinc-600">{zone.label}</span><span className="text-xs font-semibold text-zinc-900">{money(total)}</span></div>
         </div>

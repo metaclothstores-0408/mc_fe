@@ -63,7 +63,7 @@ export default function App(){
   path="/admin/products"
   element={
     <ProtectedRoute adminOnly>
-      <AdminProducts />
+      <AdminProducts notify={notify} />
     </ProtectedRoute>
   }
 />
@@ -72,7 +72,7 @@ export default function App(){
   path="/admin/avatars"
   element={
     <ProtectedRoute adminOnly>
-      <AdminAvatars />
+      <AdminAvatars notify={notify} />
     </ProtectedRoute>
   }
 />

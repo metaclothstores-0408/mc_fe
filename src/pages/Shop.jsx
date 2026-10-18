@@ -1,19 +1,40 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
 import ProductCard from "../components/ProductCard";
-import { products } from "../data/mock";
+import { products as mockProducts } from "../data/mock";
+import { api } from "../lib/api";
 
 export default function Shop() {
+  const [productList, setProductList] = useState(mockProducts);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("ALL");
   const [customOnly, setCustomOnly] = useState(false);
   const [mobileFilters, setMobileFilters] = useState(false);
 
-  const filtered = useMemo(() => products.filter(p =>
+  useEffect(() => {
+    let cancelled = false;
+    api.getProducts().then(data => {
+      if (cancelled || !Array.isArray(data) || data.length === 0) return;
+      const normalized = data.map(p => ({
+        ...p,
+        tags: p.tags || [p.garmentType?.replaceAll("_", " ") || "STREETWEAR"],
+        variants: (p.variants || []).map(v => ({
+          ...v,
+          image: v.image || v.mockupFrontUrl || "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800"
+        }))
+      }));
+      setProductList(normalized);
+    }).catch(() => {
+      // keep mockProducts on error/offline
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = useMemo(() => productList.filter(p =>
     (type === "ALL" || p.garmentType === type) &&
     (!customOnly || p.customizable) &&
-    `${p.name} ${p.description}`.toLowerCase().includes(search.toLowerCase())
-  ), [search,type,customOnly]);
+    `${p.name} ${p.description || ""}`.toLowerCase().includes(search.toLowerCase())
+  ), [productList, search, type, customOnly]);
 
   const filter = <div className="space-y-7">
     <div><label className="mb-3 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Category</label><div className="space-y-1">
