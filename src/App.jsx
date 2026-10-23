@@ -19,62 +19,104 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminAvatars from "./pages/admin/AdminAvatars";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GoogleOAuthCallback from "./pages/GoogleOAuthCallback";
+import DtfEnhancer from "./components/DtfEnhancer";
 
-export default function App(){
- const [cart,setCart]=useState(getCart()); const [user,setUser]=useState(getUser()); const [toast,setToast]=useState("");
- useEffect(()=>saveCart(cart),[cart]);
- const notify=msg=>{setToast(msg);setTimeout(()=>setToast(""),2600)};
- const addToCart=item=>setCart(c=>{const existing=c.find(i=>i.id===item.id);return existing?c.map(i=>i.id===item.id?{...i,quantity:i.quantity+item.quantity}:i):[...c,item]});
- const updateQty=(id,q)=>setCart(c=>c.map(i=>i.id===id?{...i,quantity:q}:i));
- const remove=id=>setCart(c=>c.filter(i=>i.id!==id));
- const clearCart=()=>setCart([]);
- const count=useMemo(()=>cart.reduce((s,i)=>s+i.quantity,0),[cart]);
+export default function App() {
+  const [cart, setCart] = useState(getCart());
+  const [user, setUser] = useState(getUser());
+  const [toast, setToast] = useState("");
+  useEffect(() => saveCart(cart), [cart]);
+  const notify = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2600);
+  };
+  const addToCart = (item) =>
+    setCart((c) => {
+      const existing = c.find((i) => i.id === item.id);
+      return existing
+        ? c.map((i) =>
+            i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+          )
+        : [...c, item];
+    });
+  const updateQty = (id, q) =>
+    setCart((c) => c.map((i) => (i.id === id ? { ...i, quantity: q } : i)));
+  const remove = (id) => setCart((c) => c.filter((i) => i.id !== id));
+  const clearCart = () => setCart([]);
+  const count = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart]);
 
- return <BrowserRouter><Layout cartCount={count} user={user}><Routes>
-   <Route path="/" element={<Home/>}/>
-   <Route path="/shop" element={<Shop/>}/>
-   <Route path="/product/:id" element={<Product addToCart={addToCart} notify={notify}/>}/>
-   <Route path="/studio" element={<Studio addToCart={addToCart} notify={notify}/>}/>
-   <Route path="/cart" element={<Cart cart={cart} updateQty={updateQty} remove={remove}/>}/>
-   <Route path="/checkout" element={<Checkout cart={cart} clearCart={clearCart} notify={notify}/>}/>
-   <Route path="/orders" element={<Orders/>}/>
-   <Route path="/orders/:id" element={<OrderDetail/>}/>
-   <Route path="/profile" element={<Profile user={user} setUser={setUser} notify={notify}/>}/>
-   <Route path="/signin" element={<Auth setUser={setUser}/>}/>
-   <Route path="/signup" element={<Auth setUser={setUser}/>}/>
-   <Route path="/login" element={<Auth setUser={setUser}/>}/>
-   <Route
-  path="/oauth/google/callback"
-  element={
-    <GoogleOAuthCallback setUser={setUser} />
-  }
-/>
-   <Route path="/admin/login" element={<AdminLogin setUser={setUser}/>}/>
-   <Route
-  path="/admin"
-  element={
-    <ProtectedRoute adminOnly>
-      <Admin />
-    </ProtectedRoute>
-  }
-/>
-   <Route path="*" element={<Home/>}/>
-   <Route
-  path="/admin/products"
-  element={
-    <ProtectedRoute adminOnly>
-      <AdminProducts notify={notify} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/admin/avatars"
-  element={
-    <ProtectedRoute adminOnly>
-      <AdminAvatars notify={notify} />
-    </ProtectedRoute>
-  }
-/>
- </Routes></Layout><Toast message={toast} onClose={()=>setToast("")}/></BrowserRouter>;
+  return (
+    <BrowserRouter>
+      <Layout cartCount={count} user={user}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route
+            path="/product/:id"
+            element={<Product addToCart={addToCart} notify={notify} />}
+          />
+          <Route
+            path="/studio"
+            element={<Studio addToCart={addToCart} notify={notify} />}
+          />
+          <Route
+            path="/enhancer"
+            element={<DtfEnhancer />}
+          />
+          <Route
+            path="/dtf-enhancer"
+            element={<DtfEnhancer />}
+          />
+          <Route
+            path="/cart"
+            element={<Cart cart={cart} updateQty={updateQty} remove={remove} />}
+          />
+          <Route
+            path="/checkout"
+            element={<Checkout cart={cart} clearCart={clearCart} notify={notify} />}
+          />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/:id" element={<OrderDetail />} />
+          <Route
+            path="/profile"
+            element={<Profile user={user} setUser={setUser} notify={notify} />}
+          />
+          <Route path="/signin" element={<Auth setUser={setUser} />} />
+          <Route path="/signup" element={<Auth setUser={setUser} />} />
+          <Route path="/login" element={<Auth setUser={setUser} />} />
+          <Route
+            path="/oauth/google/callback"
+            element={<GoogleOAuthCallback setUser={setUser} />}
+          />
+          <Route path="/admin/login" element={<AdminLogin setUser={setUser} />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/products"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminProducts notify={notify} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/avatars"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminAvatars notify={notify} />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </Layout>
+      <Toast message={toast} onClose={() => setToast("")} />
+    </BrowserRouter>
+  );
 }

@@ -203,8 +203,21 @@ export default function Studio({ addToCart, notify }) {
     setActiveVersionId(null);
   };
 
-  useEffect(() => () => {
-    if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
+  useEffect(() => {
+    try {
+      const savedArt = sessionStorage.getItem("shade_custom_artwork_data");
+      if (savedArt) {
+        sessionStorage.removeItem("shade_custom_artwork_data");
+        setUploadedDataUrl(savedArt);
+        setUploadedUrl(savedArt);
+        setSelectedDrop(null);
+        setArtMode("upload");
+        notify("Loaded enhanced DTF artwork into Atelier");
+      }
+    } catch (_) {}
+    return () => {
+      if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
+    };
   }, []);
 
   const dtfSheetVisualScale = (dtf.printScale ?? 1) * (dtf.selectedSheetPreset === "A4" ? 0.72 : 1.0);
@@ -705,6 +718,15 @@ export default function Studio({ addToCart, notify }) {
                 suggestedVersionName={suggestedVersionName}
               />
             )}
+            <div className="pt-1 text-right">
+              <Link 
+                to="/enhancer" 
+                className="text-[11px] text-zinc-400 hover:text-white inline-flex items-center gap-1 font-mono transition"
+              >
+                <Sparkles size={12} className="text-emerald-400" />
+                <span>Need 4× AI Super-Resolution or background removal? Open DTF Enhancer →</span>
+              </Link>
+            </div>
           </section>
 
           {/* Pricing & Add to Bag */}

@@ -8,6 +8,7 @@ export default function Header({ cartCount = 0, user }) {
   const nav = [
     ["/shop", "Collection"],
     ["/studio", "SHADE Atelier"],
+    ["/enhancer", "DTF Enhancer"],
     ["/orders", "Orders"]
   ];
 
