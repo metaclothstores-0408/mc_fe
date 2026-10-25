@@ -3,7 +3,8 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 
-const MODEL_URL = "/models/tshirt.glb";
+const CLASSIC_MODEL_URL = "/models/tshirt.glb";
+const OVERSIZED_MODEL_URL = "/models/Oversized_Tshirt.glb";
 
 // Indian/Tirupur cotton chest specifications (in inches):
 // S: 38" chest | M: 40" chest | L: 42" chest | XL: 44" chest | XXL: 46" chest
@@ -17,8 +18,8 @@ export const SIZE_SPECS = {
 
 export const GARMENT_PROFILES = {
   ROUND_NECK: { label: "Classic Round Neck", widthMul: 1.0, lengthMul: 1.0 },
-  OVERSIZED:  { label: "Oversized Streetwear (Boxy / Drop-Shoulder)", widthMul: 1.14, lengthMul: 1.03 },
-  HOODIE:     { label: "Fleece Hoodie", widthMul: 1.10, lengthMul: 1.04 },
+  OVERSIZED:  { label: "Oversized Streetwear (Boxy / Drop-Shoulder)", widthMul: 1.0, lengthMul: 1.0 },
+  HOODIE:     { label: "Fleece Hoodie", widthMul: 1.05, lengthMul: 1.02 },
   ACID_WASH:  { label: "Acid Wash Vintage", widthMul: 1.0, lengthMul: 1.0 },
   SPORTS:     { label: "Sports Jersey", widthMul: 0.98, lengthMul: 1.0 }
 };
@@ -33,11 +34,22 @@ function readableTextColor(hex) {
   return lum > 0.6 ? "#111111" : "#ffffff";
 }
 
-// Measured from tshirt.glb via GLTFLoader:
-// Box min (-11.84,41.50,-7.09) max (11.93,66.15,3.55) center (0.04,53.83,-1.77)
-// After centering, shirt centered span ~[-11.9,11.9] x [-12.3,12.3] x [-5.3,5.3]
-// BACK_FULL is the primary streetwear statement canvas (size 14.5 covers shoulder to mid-back)
-function zoneTransform(zoneId) {
+// Calibrated zone transforms for both classic and oversized streetwear 3D models
+function zoneTransform(zoneId, isOversized = true) {
+  if (isOversized) {
+    switch (zoneId) {
+      case "POCKET_LEFT":
+        return { position: [-1.05, 0.75, 1.14], rotation: [0, 0, 0], size: 1.35 };
+      case "CHEST_CENTER":
+        return { position: [0, 0.65, 1.14], rotation: [0, 0, 0], size: 3.8 };
+      case "BACK_PRINT":
+      case "BACK_FULL":
+      default:
+        return { position: [0, 0.75, -1.42], rotation: [0, Math.PI, 0], size: 4.1 };
+    }
+  }
+
+  // Classic regular-fit model (tshirt.glb)
   switch (zoneId) {
     case "POCKET_LEFT":
       return { position: [-3.8, 1.0, 4.95], rotation: [0, 0, 0], size: 4.8 };
@@ -61,8 +73,10 @@ const FONT_WEIGHT = {
   "Courier New": "700",
 };
 
-function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, size = "M", garmentType = "ROUND_NECK" }) {
-  const { scene } = useGLTF(MODEL_URL);
+function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, size = "M", garmentType = "OVERSIZED" }) {
+  const isOversized = garmentType !== "ROUND_NECK";
+  const activeModelUrl = isOversized ? OVERSIZED_MODEL_URL : CLASSIC_MODEL_URL;
+  const { scene } = useGLTF(activeModelUrl);
   const cloned = useMemo(() => scene.clone(true), [scene]);
 
   // Center the model at the origin and scale it to fit the view.
@@ -235,22 +249,24 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     });
   }, [color, cloned]);
 
-  const tf = zoneTransform(zone?.id);
+  const tf = zoneTransform(zone?.id, isOversized);
   const sizeSpec = SIZE_SPECS[size] || SIZE_SPECS.M;
-  const garmentProfile = GARMENT_PROFILES[garmentType] || GARMENT_PROFILES.ROUND_NECK;
+  const garmentProfile = GARMENT_PROFILES[garmentType] || (isOversized ? GARMENT_PROFILES.OVERSIZED : GARMENT_PROFILES.ROUND_NECK);
 
   const chestWidthFactor = sizeSpec.widthFactor * garmentProfile.widthMul;
   const chestDepthFactor = sizeSpec.depthFactor * garmentProfile.widthMul;
   const lengthFactor = garmentProfile.lengthMul;
 
   const outwardPos = useMemo(() => {
-    const zOffset = tf.position[2] >= 0 ? 0.22 : -0.22;
+    const zOffset = isOversized
+      ? (tf.position[2] >= 0 ? 0.04 : -0.04)
+      : (tf.position[2] >= 0 ? 0.22 : -0.22);
     return [
       tf.position[0] * chestWidthFactor,
       tf.position[1] * lengthFactor,
       tf.position[2] * chestDepthFactor + zOffset
     ];
-  }, [tf, chestWidthFactor, lengthFactor, chestDepthFactor]);
+  }, [tf, chestWidthFactor, lengthFactor, chestDepthFactor, isOversized]);
 
   // printScale: DTF size multiplier (0.4..4.0), isolated — scales decal planes
   const ps = Math.max(0.4, Math.min(4.0, Number(printScale ?? 1) || 1));
@@ -362,10 +378,11 @@ export default function TshirtViewer({
         gl={{ antialias: true, alpha: true }}
         style={{ position: "absolute", inset: 0 }}
       >
-        <ambientLight intensity={0.9} />
+        <ambientLight intensity={0.92} />
         <directionalLight position={[3, 5, 4]} intensity={1.15} />
         <directionalLight position={[-4, 2, 2]} intensity={0.45} />
-        <directionalLight position={[0, 4, -4]} intensity={1.1} />
+        <directionalLight position={[0, 4, -4]} intensity={1.15} />
+        <directionalLight position={[0, 6, 0]} intensity={0.35} />
         <Suspense fallback={null}>
           <ShirtModel
             color={color}
@@ -427,4 +444,5 @@ export default function TshirtViewer({
   );
 }
 
-useGLTF.preload(MODEL_URL);
+useGLTF.preload(OVERSIZED_MODEL_URL);
+useGLTF.preload(CLASSIC_MODEL_URL);
