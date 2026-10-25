@@ -78,6 +78,7 @@ export default function Studio({ addToCart, notify }) {
     height: 0,
     name: "artwork.png"
   });
+  const activeFileName = cropSourceData.name || "custom_graphic.png";
 
   // Saved DTF Collections & Versions State
   const [collections, setCollections] = useState([]);
@@ -436,7 +437,6 @@ export default function Studio({ addToCart, notify }) {
   };
 
   // Auto-calculated version name
-  const activeFileName = cropSourceData.name || "custom_graphic.png";
   const existingCount = collections.filter(c => c.originalFilename === activeFileName).length;
   const nextVersionNum = existingCount + 1;
   const suggestedVersionName = useMemo(() => {
