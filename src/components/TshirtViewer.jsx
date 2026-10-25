@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState, useRef } from "react";
+import React, { Suspense, useEffect, useMemo, useState, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
@@ -363,6 +363,56 @@ function CameraAndControls({ viewMode = "back" }) {
   );
 }
 
+class WebGLErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.warn("Caught WebGL context error in 3D Viewer:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="grid aspect-[4/5] w-full place-items-center rounded-[1.4rem] bg-[#0e0e11] border border-white/10 p-6 text-center">
+          <div className="flex flex-col items-center max-w-xs space-y-3">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="text-xl">⚡</span>
+            </div>
+            <div className="text-sm font-semibold text-white">WebGL Renderer Reset</div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Your browser paused the GPU renderer to protect VRAM. Please open a new tab or click below to resume full 3D rendering.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => this.setState({ hasError: false })}
+                className="px-3.5 py-1.5 rounded-lg border border-white/20 bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition"
+              >
+                Retry Canvas
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="px-3.5 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-zinc-200 transition"
+              >
+                Refresh Tab
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function TshirtViewer({
   color,
   avatar,
@@ -393,42 +443,51 @@ export default function TshirtViewer({
 
   return (
     <div className="relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[1.4rem] bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f2f2f5_55%,#d8d8de_100%)] shadow-[inset_0_0_80px_rgba(0,0,0,.08)]">
-      <Canvas
-        camera={{ position: [0, 0, -4.2], fov: 42 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: true }}
-        style={{ position: "absolute", inset: 0 }}
-      >
-        <ambientLight intensity={0.92} />
-        <directionalLight position={[3, 5, 4]} intensity={1.15} />
-        <directionalLight position={[-4, 2, 2]} intensity={0.45} />
-        <directionalLight position={[0, 4, -4]} intensity={1.15} />
-        <directionalLight position={[0, 6, 0]} intensity={0.35} />
-        <Suspense fallback={null}>
-          <ShirtModel
-            color={color}
-            avatar={avatar}
-            text={text}
-            font={font}
-            fontSize={fontSize}
-            zone={zone}
-            printScale={printScale}
-            size={size}
-            garmentType={garmentType}
-            collarDistanceInches={collarDistanceInches}
-          />
-          {/* Floor shadow lowered to -1.25 to prevent waist/hem intersection reflection */}
-          <ContactShadows
-            position={[0, -1.25, 0]}
-            opacity={0.38}
-            scale={5.5}
-            blur={2.4}
-            far={2.5}
-            color="#000000"
-          />
-        </Suspense>
-        <CameraAndControls viewMode={viewMode} />
-      </Canvas>
+      <WebGLErrorBoundary>
+        <Canvas
+          camera={{ position: [0, 0, -4.2], fov: 42 }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: true, alpha: true, powerPreference: "default", preserveDrawingBuffer: false }}
+          style={{ position: "absolute", inset: 0 }}
+          onCreated={({ gl }) => {
+            const canvas = gl.domElement;
+            canvas.addEventListener("webglcontextlost", (e) => {
+              e.preventDefault();
+              console.warn("WebGL context lost detected on 3D canvas.");
+            }, false);
+          }}
+        >
+          <ambientLight intensity={0.92} />
+          <directionalLight position={[3, 5, 4]} intensity={1.15} />
+          <directionalLight position={[-4, 2, 2]} intensity={0.45} />
+          <directionalLight position={[0, 4, -4]} intensity={1.15} />
+          <directionalLight position={[0, 6, 0]} intensity={0.35} />
+          <Suspense fallback={null}>
+            <ShirtModel
+              color={color}
+              avatar={avatar}
+              text={text}
+              font={font}
+              fontSize={fontSize}
+              zone={zone}
+              printScale={printScale}
+              size={size}
+              garmentType={garmentType}
+              collarDistanceInches={collarDistanceInches}
+            />
+            {/* Floor shadow lowered to -1.25 to prevent waist/hem intersection reflection */}
+            <ContactShadows
+              position={[0, -1.25, 0]}
+              opacity={0.38}
+              scale={5.5}
+              blur={2.4}
+              far={2.5}
+              color="#000000"
+            />
+          </Suspense>
+          <CameraAndControls viewMode={viewMode} />
+        </Canvas>
+      </WebGLErrorBoundary>
 
       {/* Top Left: Fit Spec Badge */}
       <div className="absolute left-4 top-4 rounded-lg border border-black/10 bg-white/70 px-3 py-1.5 text-[11px] font-medium tracking-wide text-zinc-700 backdrop-blur shadow-sm flex items-center gap-1.5 z-10">
