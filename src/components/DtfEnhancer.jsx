@@ -12,6 +12,7 @@ import {
   Layers,
   ChevronLeft
 } from "lucide-react";
+import { setPendingStudioArtwork } from "../lib/storage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -26,6 +27,10 @@ export default function DtfEnhancer() {
   const [imageStats, setImageStats] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
+
+  const originalBaseName = file ? file.name.replace(/\.[^/.]+$/, "") : "artwork";
+  const cleanBaseName = originalBaseName.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+  const downloadFileName = `${cleanBaseName}_dtf_output_300dpi.png`;
 
   const handleFileChange = (e) => {
     const selected = e.target.files && e.target.files[0];
@@ -96,23 +101,23 @@ export default function DtfEnhancer() {
   };
 
   const handleApplyToStudio = () => {
-    if (!outputUrl) return;
-    // Store in session storage so Studio.jsx can pick it up if redirected
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      try {
-        sessionStorage.setItem("shade_custom_artwork_data", reader.result);
-        navigate("/studio");
-      } catch (e) {
-        console.warn("Could not save to session storage, opening studio directly:", e);
-        navigate("/studio");
-      }
-    };
-    if (outputBlob) {
-      reader.readAsDataURL(outputBlob);
-    } else {
-      navigate("/studio");
-    }
+    if (!outputUrl && !outputBlob) return;
+
+    const w = imageStats ? (imageStats.width * (enableEnhance ? 4 : 1)) : 1200;
+    const h = imageStats ? (imageStats.height * (enableEnhance ? 4 : 1)) : 1200;
+
+    // Use our in-memory bridge to pass the full Blob and metadata to Studio (zero quota limits)
+    setPendingStudioArtwork({
+      blob: outputBlob,
+      url: outputUrl,
+      dataUrl: outputUrl,
+      name: downloadFileName,
+      originalName: file ? file.name : "artwork.png",
+      width: w,
+      height: h
+    });
+
+    navigate("/studio");
   };
 
   return (
@@ -363,11 +368,12 @@ export default function DtfEnhancer() {
               <div className="mt-4 flex flex-col sm:flex-row gap-3">
                 <a
                   href={outputUrl}
-                  download="print_ready_dtf_300dpi.png"
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 px-4 py-2.5 text-xs font-semibold text-white transition"
+                  download={downloadFileName}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 px-4 py-2.5 text-xs font-semibold text-white transition truncate"
+                  title={downloadFileName}
                 >
-                  <Download size={15} />
-                  <span>Download Print-Ready PNG (300 DPI)</span>
+                  <Download size={15} className="shrink-0" />
+                  <span className="truncate">Download {downloadFileName}</span>
                 </a>
               </div>
             </div>
@@ -377,4 +383,3 @@ export default function DtfEnhancer() {
     </div>
   );
 }
-

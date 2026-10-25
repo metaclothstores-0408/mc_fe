@@ -84,10 +84,83 @@ export function getSessionId() {
   return sid;
 }
 
+// In-Memory Transfer Bridge between DTF Enhancer and Studio (bypasses 5MB browser storage limits)
+let pendingStudioArtwork = null;
+
+export function setPendingStudioArtwork(art) {
+  pendingStudioArtwork = art;
+  try {
+    if (art) {
+      sessionStorage.setItem(
+        "shade_pending_studio_meta",
+        JSON.stringify({
+          name: art.name,
+          originalName: art.originalName,
+          width: art.width,
+          height: art.height,
+        })
+      );
+    } else {
+      sessionStorage.removeItem("shade_pending_studio_meta");
+    }
+  } catch (_) {}
+}
+
+export function getPendingStudioArtwork() {
+  return pendingStudioArtwork;
+}
+
+export function clearPendingStudioArtwork() {
+  pendingStudioArtwork = null;
+  try {
+    sessionStorage.removeItem("shade_pending_studio_meta");
+    sessionStorage.removeItem("shade_custom_artwork_data");
+  } catch (_) {}
+}
+
+// Helper to generate a fast, lightweight thumbnail (< 50KB) for collection saving
+export function createThumbnailDataUrl(sourceUrlOrDataUrl, maxDim = 500, quality = 0.82) {
+  if (!sourceUrlOrDataUrl) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        let w = img.naturalWidth || img.width || maxDim;
+        let h = img.naturalHeight || img.height || maxDim;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, w, h);
+        const thumb = canvas.toDataURL("image/webp", quality);
+        resolve(thumb.length < sourceUrlOrDataUrl.length ? thumb : canvas.toDataURL("image/jpeg", quality));
+      } catch {
+        resolve(sourceUrlOrDataUrl.length > 200000 ? sourceUrlOrDataUrl.slice(0, 50000) : sourceUrlOrDataUrl);
+      }
+    };
+    img.onerror = () => resolve(sourceUrlOrDataUrl);
+    img.src = sourceUrlOrDataUrl;
+  });
+}
+
 export function getDtfCollections() {
   try {
     const list = JSON.parse(localStorage.getItem(DTF_COLLECTIONS_KEY) || "[]");
-    return Array.isArray(list) ? list.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)) : [];
+    return Array.isArray(list)
+      ? list.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      : [];
   } catch {
     return [];
   }
@@ -95,26 +168,55 @@ export function getDtfCollections() {
 
 export function saveDtfCollectionItem(item) {
   const list = getDtfCollections();
-  const existingIdx = list.findIndex(c => c.id === item.id);
+  const existingIdx = list.findIndex((c) => c.id === item.id);
   const now = new Date().toISOString();
-  const fullItem = {
+  
+  // Ensure lightweight thumbnail payload to prevent QuotaExceededError
+  const thumb = item.thumbnailUrl || item.previewDataUrl || item.imageDataUrl;
+  const sanitizedItem = {
     ...item,
     collectionGroup: item.collectionGroup && item.collectionGroup.trim() ? item.collectionGroup.trim() : "General",
     updatedAt: now,
     createdAt: item.createdAt || now,
+    thumbnailUrl: thumb,
+    previewDataUrl: thumb,
+    imageDataUrl: thumb,
   };
+
   if (existingIdx >= 0) {
-    list[existingIdx] = fullItem;
+    list[existingIdx] = sanitizedItem;
   } else {
-    list.unshift(fullItem);
+    list.unshift(sanitizedItem);
   }
-  localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
+
+  // Safe save with automatic quota overflow pruning
+  try {
+    localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.warn("Storage quota limit reached in saveDtfCollectionItem. Trimming heavy payloads...", err);
+    try {
+      // Keep newest 25 versions and strip any excessive payloads
+      const trimmedList = list.slice(0, 25).map((c) => ({
+        ...c,
+        imageDataUrl: c.imageDataUrl && c.imageDataUrl.length > 150000 ? c.imageDataUrl.slice(0, 1000) : c.imageDataUrl,
+        previewDataUrl: c.previewDataUrl && c.previewDataUrl.length > 150000 ? c.previewDataUrl.slice(0, 1000) : c.previewDataUrl,
+      }));
+      localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(trimmedList));
+      return trimmedList;
+    } catch (e2) {
+      console.error("Critical storage quota failure:", e2);
+    }
+  }
   return list;
 }
 
 export function deleteDtfCollectionItem(id) {
-  const list = getDtfCollections().filter(c => String(c.id) !== String(id));
-  localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
+  const list = getDtfCollections().filter((c) => String(c.id) !== String(id));
+  try {
+    localStorage.setItem(DTF_COLLECTIONS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn("Failed to delete item from storage:", e);
+  }
   return list;
 }
 
@@ -124,7 +226,7 @@ export function getDtfGroups() {
   try {
     const customGroups = JSON.parse(localStorage.getItem(DTF_GROUPS_KEY) || "[]");
     const items = getDtfCollections();
-    const itemGroups = items.map(i => i.collectionGroup).filter(Boolean);
+    const itemGroups = items.map((i) => i.collectionGroup).filter(Boolean);
     const combined = Array.from(new Set(["General", ...customGroups, ...itemGroups]));
     return combined;
   } catch {
@@ -138,9 +240,11 @@ export function saveDtfGroup(name) {
   if (!trimmed) return getDtfGroups();
   const existing = getDtfGroups();
   if (!existing.includes(trimmed)) {
-    const custom = JSON.parse(localStorage.getItem(DTF_GROUPS_KEY) || "[]");
-    custom.push(trimmed);
-    localStorage.setItem(DTF_GROUPS_KEY, JSON.stringify(custom));
+    try {
+      const custom = JSON.parse(localStorage.getItem(DTF_GROUPS_KEY) || "[]");
+      custom.push(trimmed);
+      localStorage.setItem(DTF_GROUPS_KEY, JSON.stringify(custom));
+    } catch (_) {}
   }
   return getDtfGroups();
 }

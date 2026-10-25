@@ -25,7 +25,10 @@ import {
   saveDtfCollectionItem,
   deleteDtfCollectionItem,
   getDtfGroups,
-  saveDtfGroup
+  saveDtfGroup,
+  getPendingStudioArtwork,
+  clearPendingStudioArtwork,
+  createThumbnailDataUrl
 } from "../lib/storage";
 import { computePrintWidthInches, getSheetPreset, processDtfImage } from "../lib/dtfProcessor";
 import { api } from "../lib/api";
@@ -205,17 +208,75 @@ export default function Studio({ addToCart, notify }) {
   };
 
   useEffect(() => {
+    // 1. Check in-memory pending artwork from DTF Enhancer (bypasses 5MB quota)
+    const pending = getPendingStudioArtwork();
+    if (pending && (pending.url || pending.dataUrl || pending.blob)) {
+      clearPendingStudioArtwork();
+      const artUrl = pending.url || (pending.blob ? URL.createObjectURL(pending.blob) : pending.dataUrl);
+      if (uploadedObjectUrlRef.current && uploadedObjectUrlRef.current !== artUrl) {
+        URL.revokeObjectURL(uploadedObjectUrlRef.current);
+      }
+      uploadedObjectUrlRef.current = artUrl;
+      setUploadedUrl(artUrl);
+
+      if (pending.dataUrl) {
+        setUploadedDataUrl(pending.dataUrl);
+      } else if (pending.blob) {
+        const reader = new FileReader();
+        reader.onload = () => setUploadedDataUrl(reader.result);
+        reader.readAsDataURL(pending.blob);
+      }
+
+      const imgName = pending.name || "enhanced_artwork.png";
+      setActiveFileName(imgName);
+
+      const w = pending.width || 1200;
+      const h = pending.height || 1200;
+      const ratio = w / h;
+
+      // CRUCIAL: Set cropSourceData so "Adjust / Crop" works immediately!
+      setCropSourceData({
+        src: artUrl,
+        file: pending.blob || null,
+        width: w,
+        height: h,
+        name: imgName,
+      });
+      setCropSettings({ zoom: 1, pan: { x: 0, y: 0 } });
+
+      setSelectedDrop(null);
+      setArtMode("upload");
+
+      if (ratio < 0.92 || ratio > 1.08) {
+        setIsCropModalOpen(true);
+        notify(`Enhanced art loaded (${w}×${h}). Aligning 1:1 boxy frame.`);
+      } else {
+        notify(`Loaded "${imgName}" into SHADE Atelier`);
+      }
+      return;
+    }
+
+    // 2. Fallback: check legacy sessionStorage if present
     try {
       const savedArt = sessionStorage.getItem("shade_custom_artwork_data");
       if (savedArt) {
         sessionStorage.removeItem("shade_custom_artwork_data");
         setUploadedDataUrl(savedArt);
         setUploadedUrl(savedArt);
+        setCropSourceData({
+          src: savedArt,
+          file: null,
+          width: 1200,
+          height: 1200,
+          name: "enhanced_artwork.png",
+        });
+        setCropSettings({ zoom: 1, pan: { x: 0, y: 0 } });
         setSelectedDrop(null);
         setArtMode("upload");
         notify("Loaded enhanced DTF artwork into Atelier");
       }
     } catch (_) {}
+
     return () => {
       if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
     };
@@ -272,6 +333,18 @@ export default function Studio({ addToCart, notify }) {
     const finalGroupName = collectionGroup && collectionGroup.trim() ? collectionGroup.trim() : "General";
     saveDtfGroup(finalGroupName);
 
+    const targetSource = processedUrl || uploadedDataUrl || uploadedUrl;
+    
+    // Generate an ultra-fast lightweight thumbnail (< 40KB) to prevent QuotaExceededError and latency
+    let thumbnailDataUrl = targetSource;
+    try {
+      if (targetSource && targetSource.length > 50000) {
+        thumbnailDataUrl = await createThumbnailDataUrl(targetSource, 500, 0.82);
+      }
+    } catch (e) {
+      console.warn("Thumbnail generation error, proceeding:", e);
+    }
+
     const versionPayload = {
       id: `dtf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sessionId: sid,
@@ -279,8 +352,9 @@ export default function Studio({ addToCart, notify }) {
       collectionGroup: finalGroupName,
       originalFilename: activeFileName,
       versionNumber: nextVersionNum,
-      imageDataUrl: uploadedDataUrl || uploadedUrl,
-      previewDataUrl: processedUrl || uploadedDataUrl || uploadedUrl,
+      // Store lightweight preview to ensure instant saves without exceeding 5MB quota
+      imageDataUrl: thumbnailDataUrl,
+      previewDataUrl: thumbnailDataUrl,
       selectedSheetPreset: dtf.selectedSheetPreset,
       printScale: dtf.printScale ?? 1,
       stripColorHex: dtf.stripColorHex,
