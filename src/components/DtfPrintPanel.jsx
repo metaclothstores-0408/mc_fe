@@ -44,7 +44,9 @@ export default function DtfPrintPanel(p) {
           sheet_width_inches: sheet.widthInches,
           sheet_height_inches: sheet.heightInches,
           preview_data_url: p.previewDataUrl || p.previewUrl || null,
-          original_asset_url: p.uploadedDataUrl || p.rawSourceUrl || null
+          original_asset_url: p.uploadedDataUrl || p.rawSourceUrl || null,
+          collar_distance_inches: p.value.collarDistanceInches ?? 2.5,
+          print_placement: `Back DTF Centered · ${(p.value.collarDistanceInches ?? 2.5).toFixed(1)}″ below collar seam`
         }
       };
       const blob = await api.downloadDtfPng(payload);
@@ -156,6 +158,68 @@ export default function DtfPrintPanel(p) {
                 <X size={14} />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* DTF Print Placement / Distance from Collar */}
+        {p.hasSource && (
+          <div className="rounded-xl border border-white/15 bg-white/[0.03] p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="grid h-5 w-5 place-items-center rounded bg-white/10 text-zinc-300 text-[10px] font-mono">↕</span>
+                <span className="text-xs font-semibold text-white">Vertical Print Placement</span>
+              </div>
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-400">
+                {(p.value.collarDistanceInches ?? 2.5).toFixed(1)}″ from collar
+              </span>
+            </div>
+
+            {/* Quick Placement Presets */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { label: "2.0″ High", val: 2.0 },
+                { label: "2.5″ Std", val: 2.5 },
+                { label: "3.5″ Mid", val: 3.5 },
+                { label: "4.5″ Drop", val: 4.5 }
+              ].map(preset => {
+                const active = Math.abs((p.value.collarDistanceInches ?? 2.5) - preset.val) < 0.15;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => upd({ collarDistanceInches: preset.val })}
+                    className={`rounded-lg py-1.5 px-1 text-[10px] font-medium transition text-center ${
+                      active
+                        ? "bg-white text-black font-bold shadow-sm"
+                        : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 border border-white/5"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Precision Slider */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
+                <span>Higher (1.5″)</span>
+                <span>Standard (2.5″)</span>
+                <span>Lower (5.5″)</span>
+              </div>
+              <input
+                type="range"
+                min={1.5}
+                max={5.5}
+                step={0.25}
+                value={p.value.collarDistanceInches ?? 2.5}
+                onChange={e => upd({ collarDistanceInches: Number(e.target.value) })}
+                className="h-1.5 w-full appearance-none rounded-full bg-white/10 accent-white cursor-pointer"
+              />
+            </div>
+            <p className="text-[10px] text-zinc-500 font-mono">
+              * Exact placement distance is calibrated for Tirupur DTF heat-press alignment.
+            </p>
           </div>
         )}
 

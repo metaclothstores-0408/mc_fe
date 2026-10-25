@@ -62,7 +62,8 @@ export default function Studio({ addToCart, notify }) {
     stripColorHex: "#ffffff",
     stripSensitivity: 30,
     halftoneDensity: 0,
-    printScale: 1
+    printScale: 1,
+    collarDistanceInches: 2.5
   });
   const [processedUrl, setProcessedUrl] = useState(null);
 
@@ -417,6 +418,7 @@ export default function Studio({ addToCart, notify }) {
       previewDataUrl: thumbnailDataUrl,
       selectedSheetPreset: dtf.selectedSheetPreset,
       printScale: dtf.printScale ?? 1,
+      collarDistanceInches: dtf.collarDistanceInches ?? 2.5,
       stripColorHex: dtf.stripColorHex,
       stripSensitivity: dtf.stripSensitivity,
       halftoneDensity: dtf.halftoneDensity,
@@ -461,6 +463,7 @@ export default function Studio({ addToCart, notify }) {
       stripSensitivity: item.stripSensitivity ?? 30,
       halftoneDensity: item.halftoneDensity ?? 0,
       printScale: item.printScale ?? 1,
+      collarDistanceInches: item.collarDistanceInches ?? 2.5
     });
 
     // 4. Set Image
@@ -525,7 +528,9 @@ export default function Studio({ addToCart, notify }) {
       sheet_height_inches: sheet.heightInches,
       source_type: "upload",
       original_asset_url: uploadedDataUrl || uploadedUrl,
-      preview_data_url: processedUrl || uploadedDataUrl || uploadedUrl
+      preview_data_url: processedUrl || uploadedDataUrl || uploadedUrl,
+      collar_distance_inches: dtf.collarDistanceInches ?? 2.5,
+      print_placement: `Back DTF Centered · ${(dtf.collarDistanceInches ?? 2.5).toFixed(1)}″ below collar seam`
     } : null;
 
     addToCart({
@@ -611,6 +616,8 @@ export default function Studio({ addToCart, notify }) {
                 printScale={dtfSheetVisualScale}
                 size={size}
                 garmentType={garment.type}
+                collarDistanceInches={dtf.collarDistanceInches ?? 2.5}
+                onCollarDistanceChange={(val) => setDtf(prev => ({ ...prev, collarDistanceInches: val }))}
               />
             </Suspense>
 

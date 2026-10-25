@@ -35,30 +35,37 @@ function readableTextColor(hex) {
 }
 
 // Calibrated zone transforms for both classic and oversized streetwear 3D models
-function zoneTransform(zoneId, isOversized = true) {
+function zoneTransform(zoneId, isOversized = true, collarDistanceInches = 2.5) {
+  // In streetwear printing, 2.5" below collar is standard placement.
+  // Each inch difference shifts the 3D model plane along Y.
+  const diffInches = (collarDistanceInches - 2.5);
+
   if (isOversized) {
+    const yShift = diffInches * 0.254; // 1 inch = 0.254 units in Oversized_Tshirt.glb
     switch (zoneId) {
       case "POCKET_LEFT":
-        return { position: [-1.05, 0.75, 1.14], rotation: [0, 0, 0], size: 1.35 };
+        return { position: [-1.05, 0.45 - (diffInches * 0.15), 1.14], rotation: [0, 0, 0], size: 1.35 };
       case "CHEST_CENTER":
-        return { position: [0, 0.65, 1.14], rotation: [0, 0, 0], size: 3.8 };
+        return { position: [0, -0.15 - yShift, 1.18], rotation: [0, 0, 0], size: 3.8 };
       case "BACK_PRINT":
       case "BACK_FULL":
       default:
-        return { position: [0, 0.75, -1.42], rotation: [0, Math.PI, 0], size: 4.1 };
+        // Base center at -0.22 puts top of 4.10 high graphic at Y = 1.83 (2.5 inches below Y=2.45 back collar band)
+        return { position: [0, -0.22 - yShift, -1.45], rotation: [0, Math.PI, 0], size: 4.1 };
     }
   }
 
   // Classic regular-fit model (tshirt.glb)
+  const yShiftClassic = diffInches * 0.896;
   switch (zoneId) {
     case "POCKET_LEFT":
-      return { position: [-3.8, 1.0, 4.95], rotation: [0, 0, 0], size: 4.8 };
+      return { position: [-3.8, 0.6 - (diffInches * 0.5), 4.95], rotation: [0, 0, 0], size: 4.8 };
     case "CHEST_CENTER":
-      return { position: [0, 0.8, 5.02], rotation: [0, 0, 0], size: 13.5 };
+      return { position: [0, 0.0 - yShiftClassic, 5.02], rotation: [0, 0, 0], size: 13.5 };
     case "BACK_PRINT":
     case "BACK_FULL":
     default:
-      return { position: [0, 1.2, -5.32], rotation: [0, Math.PI, 0], size: 14.5 };
+      return { position: [0, -0.30 - yShiftClassic, -5.32], rotation: [0, Math.PI, 0], size: 14.5 };
   }
 }
 
@@ -73,7 +80,18 @@ const FONT_WEIGHT = {
   "Courier New": "700",
 };
 
-function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, size = "M", garmentType = "OVERSIZED" }) {
+function ShirtModel({ 
+  color, 
+  avatar, 
+  text, 
+  font, 
+  fontSize, 
+  zone, 
+  printScale, 
+  size = "M", 
+  garmentType = "OVERSIZED",
+  collarDistanceInches = 2.5
+}) {
   const isOversized = garmentType !== "ROUND_NECK";
   const activeModelUrl = isOversized ? OVERSIZED_MODEL_URL : CLASSIC_MODEL_URL;
   const { scene } = useGLTF(activeModelUrl);
@@ -249,7 +267,7 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
     });
   }, [color, cloned]);
 
-  const tf = zoneTransform(zone?.id, isOversized);
+  const tf = zoneTransform(zone?.id, isOversized, collarDistanceInches);
   const sizeSpec = SIZE_SPECS[size] || SIZE_SPECS.M;
   const garmentProfile = GARMENT_PROFILES[garmentType] || (isOversized ? GARMENT_PROFILES.OVERSIZED : GARMENT_PROFILES.ROUND_NECK);
 
@@ -355,10 +373,13 @@ export default function TshirtViewer({
   printScale = 1,
   size = "M",
   garmentType = "ROUND_NECK",
-  defaultView = "back"
+  defaultView = "back",
+  collarDistanceInches = 2.5,
+  onCollarDistanceChange
 }) {
   const sizeSpec = SIZE_SPECS[size] || SIZE_SPECS.M;
-  const garmentProfile = GARMENT_PROFILES[garmentType] || GARMENT_PROFILES.ROUND_NECK;
+  const isOversized = garmentType !== "ROUND_NECK";
+  const garmentProfile = GARMENT_PROFILES[garmentType] || (isOversized ? GARMENT_PROFILES.OVERSIZED : GARMENT_PROFILES.ROUND_NECK);
   const isBackZone = zone?.id === "BACK_FULL" || zone?.id === "BACK_PRINT" || !zone?.id;
   const [viewMode, setViewMode] = useState(defaultView || (isBackZone ? "back" : "front"));
 
@@ -394,6 +415,7 @@ export default function TshirtViewer({
             printScale={printScale}
             size={size}
             garmentType={garmentType}
+            collarDistanceInches={collarDistanceInches}
           />
           {/* Floor shadow lowered to -1.25 to prevent waist/hem intersection reflection */}
           <ContactShadows
@@ -436,8 +458,34 @@ export default function TshirtViewer({
         </button>
       </div>
 
+      {/* On-Screen Graphic Vertical Position Nudge Pill */}
+      {avatar && onCollarDistanceChange && (
+        <div className="absolute left-4 bottom-4 flex items-center gap-2 rounded-xl border border-black/15 bg-white/90 px-3 py-1.5 backdrop-blur shadow-md z-10">
+          <span className="text-[10px] font-bold text-zinc-900 tracking-wider font-mono">
+            COLLAR: {(collarDistanceInches ?? 2.5).toFixed(1)}″
+          </span>
+          <div className="h-3.5 w-px bg-black/15" />
+          <button
+            type="button"
+            title="Move Graphic Up (Closer to collar)"
+            onClick={() => onCollarDistanceChange(Math.max(1.5, Math.round(((collarDistanceInches ?? 2.5) - 0.25) * 100) / 100))}
+            className="grid h-5 w-5 place-items-center rounded bg-black/5 hover:bg-black hover:text-white text-zinc-800 text-[11px] font-bold transition shadow-xs"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            title="Move Graphic Down (Further from collar)"
+            onClick={() => onCollarDistanceChange(Math.min(5.5, Math.round(((collarDistanceInches ?? 2.5) + 0.25) * 100) / 100))}
+            className="grid h-5 w-5 place-items-center rounded bg-black/5 hover:bg-black hover:text-white text-zinc-800 text-[11px] font-bold transition shadow-xs"
+          >
+            ▼
+          </button>
+        </div>
+      )}
+
       {/* Subtle Hint */}
-      <div className="absolute bottom-16 right-4 rounded-lg border border-black/10 bg-white/60 px-2.5 py-1 text-[9px] uppercase tracking-wider text-zinc-600 backdrop-blur pointer-events-none">
+      <div className="absolute bottom-4 right-4 rounded-lg border border-black/10 bg-white/60 px-2.5 py-1 text-[9px] uppercase tracking-wider text-zinc-600 backdrop-blur pointer-events-none">
         Drag to rotate 360°
       </div>
     </div>
