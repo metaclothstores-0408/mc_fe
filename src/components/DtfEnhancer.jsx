@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Sparkles, 
@@ -12,24 +12,30 @@ import {
   Layers,
   ChevronLeft
 } from "lucide-react";
-import { setPendingStudioArtwork } from "../lib/storage";
+import { 
+  getEnhancerCache, 
+  updateEnhancerCache, 
+  setPendingStudioArtwork 
+} from "../lib/storage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export default function DtfEnhancer() {
-  const [file, setFile] = useState(null);
-  const [enableEnhance, setEnableEnhance] = useState(false);
-  const [removeBg, setRemoveBg] = useState(false);
-  const [isPhoto, setIsPhoto] = useState(false);
+  const cached = getEnhancerCache();
+  const [file, setFile] = useState(cached.file);
+  const [enableEnhance, setEnableEnhance] = useState(cached.enableEnhance);
+  const [removeBg, setRemoveBg] = useState(cached.removeBg);
+  const [isPhoto, setIsPhoto] = useState(cached.isPhoto);
   const [loading, setLoading] = useState(false);
-  const [outputUrl, setOutputUrl] = useState(null);
-  const [outputBlob, setOutputBlob] = useState(null);
-  const [imageStats, setImageStats] = useState(null);
+  const [outputUrl, setOutputUrl] = useState(cached.outputUrl);
+  const [outputBlob, setOutputBlob] = useState(cached.outputBlob);
+  const [outputDataUrl, setOutputDataUrl] = useState(cached.outputDataUrl);
+  const [imageStats, setImageStats] = useState(cached.imageStats);
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
 
-  const originalBaseName = file ? file.name.replace(/\.[^/.]+$/, "") : "artwork";
-  const cleanBaseName = originalBaseName.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+  const originalBaseName = (file?.name || cached.fileName || "artwork").replace(/\.[^/.]+$/, "");
+  const cleanBaseName = originalBaseName.replace(/[^a-zA-Z0-9_\-\.]/g, "_") || "artwork";
   const downloadFileName = `${cleanBaseName}_dtf_output_300dpi.png`;
 
   const handleFileChange = (e) => {
@@ -39,7 +45,16 @@ export default function DtfEnhancer() {
     setFile(selected);
     setOutputUrl(null);
     setOutputBlob(null);
+    setOutputDataUrl(null);
     setErrorMsg("");
+
+    updateEnhancerCache({
+      file: selected,
+      fileName: selected.name,
+      outputUrl: null,
+      outputBlob: null,
+      outputDataUrl: null,
+    });
 
     const img = new Image();
     const objectUrl = URL.createObjectURL(selected);
@@ -49,19 +64,40 @@ export default function DtfEnhancer() {
       const h = (img.naturalHeight / 300).toFixed(1);
       const isLowRes = img.naturalWidth < 1800 || img.naturalHeight < 1800;
 
-      setImageStats({
+      const stats = {
         width: img.naturalWidth,
         height: img.naturalHeight,
         maxPrintInches: `${w}" × ${h}"`,
         isLowRes: isLowRes,
-      });
+      };
 
-      // Auto-suggest enabling enhancement if image is too small for a full print
+      setImageStats(stats);
       if (isLowRes) {
         setEnableEnhance(true);
       }
+
+      updateEnhancerCache({
+        imageStats: stats,
+        enableEnhance: isLowRes ? true : enableEnhance,
+      });
+
       URL.revokeObjectURL(objectUrl);
     };
+  };
+
+  const handleToggleEnhance = (val) => {
+    setEnableEnhance(val);
+    updateEnhancerCache({ enableEnhance: val });
+  };
+
+  const handleToggleRemoveBg = (val) => {
+    setRemoveBg(val);
+    updateEnhancerCache({ removeBg: val });
+  };
+
+  const handleTogglePhoto = (val) => {
+    setIsPhoto(val);
+    updateEnhancerCache({ isPhoto: val });
   };
 
   const handleSubmit = async () => {
@@ -91,8 +127,23 @@ export default function DtfEnhancer() {
       }
 
       const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
       setOutputBlob(blob);
-      setOutputUrl(URL.createObjectURL(blob));
+      setOutputUrl(objUrl);
+
+      // Read as DataURL for permanent safe retention across routes
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dUrl = reader.result;
+        setOutputDataUrl(dUrl);
+        updateEnhancerCache({
+          outputBlob: blob,
+          outputUrl: objUrl,
+          outputDataUrl: dUrl,
+        });
+      };
+      reader.readAsDataURL(blob);
+
     } catch (err) {
       setErrorMsg(err.message || "An unexpected error occurred during processing.");
     } finally {
@@ -101,23 +152,37 @@ export default function DtfEnhancer() {
   };
 
   const handleApplyToStudio = () => {
-    if (!outputUrl && !outputBlob) return;
+    if (!outputUrl && !outputBlob && !outputDataUrl) return;
 
-    const w = imageStats ? (imageStats.width * (enableEnhance ? 4 : 1)) : 1200;
-    const h = imageStats ? (imageStats.height * (enableEnhance ? 4 : 1)) : 1200;
+    const w = imageStats ? imageStats.width * (enableEnhance ? 4 : 1) : 1200;
+    const h = imageStats ? imageStats.height * (enableEnhance ? 4 : 1) : 1200;
 
-    // Use our in-memory bridge to pass the full Blob and metadata to Studio (zero quota limits)
-    setPendingStudioArtwork({
-      blob: outputBlob,
-      url: outputUrl,
-      dataUrl: outputUrl,
-      name: downloadFileName,
-      originalName: file ? file.name : "artwork.png",
-      width: w,
-      height: h
-    });
+    const proceed = (finalDataUrl) => {
+      setPendingStudioArtwork({
+        blob: outputBlob,
+        url: finalDataUrl || outputUrl,
+        dataUrl: finalDataUrl || outputUrl,
+        name: downloadFileName,
+        originalName: file ? file.name : "artwork.png",
+        width: w,
+        height: h,
+      });
+      navigate("/studio");
+    };
 
-    navigate("/studio");
+    if (outputDataUrl) {
+      proceed(outputDataUrl);
+    } else if (outputBlob) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setOutputDataUrl(reader.result);
+        updateEnhancerCache({ outputDataUrl: reader.result });
+        proceed(reader.result);
+      };
+      reader.readAsDataURL(outputBlob);
+    } else {
+      proceed(outputUrl);
+    }
   };
 
   return (
@@ -159,7 +224,7 @@ export default function DtfEnhancer() {
             {file ? file.name : "Select or drag Artwork File"}
           </span>
           <span className="text-xs text-zinc-500 mt-1">
-            PNG, JPG, or WEBP supported
+            PNG, JPG, or WEBP supported · State preserved across navigation
           </span>
           <input 
             type="file" 
@@ -201,7 +266,7 @@ export default function DtfEnhancer() {
             type="checkbox"
             className="mt-1 h-4 w-4 rounded accent-white cursor-pointer"
             checked={enableEnhance}
-            onChange={(e) => setEnableEnhance(e.target.checked)}
+            onChange={(e) => handleToggleEnhance(e.target.checked)}
           />
           <label htmlFor="enableEnhance" className="cursor-pointer select-none">
             <div className="flex items-center gap-2">
@@ -229,7 +294,7 @@ export default function DtfEnhancer() {
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded accent-white cursor-pointer"
               checked={removeBg}
-              onChange={(e) => setRemoveBg(e.target.checked)}
+              onChange={(e) => handleToggleRemoveBg(e.target.checked)}
             />
             <div>
               <span className="text-xs font-semibold text-white block">
@@ -251,7 +316,7 @@ export default function DtfEnhancer() {
               className="mt-0.5 h-4 w-4 rounded accent-white cursor-pointer"
               checked={isPhoto}
               disabled={!enableEnhance}
-              onChange={(e) => setIsPhoto(e.target.checked)}
+              onChange={(e) => handleTogglePhoto(e.target.checked)}
             />
             <div>
               <span className="text-xs font-semibold text-white block">
@@ -305,7 +370,7 @@ export default function DtfEnhancer() {
           )}
         </button>
 
-        {outputUrl && (
+        {(outputUrl || outputDataUrl) && (
           <button
             onClick={handleApplyToStudio}
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-white/20 bg-white/5 font-semibold text-xs text-white hover:bg-white/10 transition flex items-center justify-center gap-2"
@@ -317,7 +382,7 @@ export default function DtfEnhancer() {
       </div>
 
       {/* Result Display: Side-by-Side Comparison */}
-      {outputUrl && (
+      {(outputUrl || outputDataUrl) && (
         <div className="mt-10 pt-8 border-t border-white/10">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -341,11 +406,13 @@ export default function DtfEnhancer() {
                 )}
               </div>
               <div className="relative aspect-square rounded-xl bg-zinc-950 flex items-center justify-center p-4 overflow-hidden border border-white/5">
-                <img
-                  src={URL.createObjectURL(file)}
-                  alt="Source"
-                  className="max-h-full max-w-full object-contain"
-                />
+                {file && (
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt="Source"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                )}
               </div>
             </div>
 
@@ -360,14 +427,14 @@ export default function DtfEnhancer() {
               </div>
               <div className="relative aspect-square rounded-xl bg-zinc-950 flex items-center justify-center p-4 overflow-hidden border border-white/5">
                 <img
-                  src={outputUrl}
+                  src={outputDataUrl || outputUrl}
                   alt="Output"
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
               <div className="mt-4 flex flex-col sm:flex-row gap-3">
                 <a
-                  href={outputUrl}
+                  href={outputUrl || outputDataUrl}
                   download={downloadFileName}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 px-4 py-2.5 text-xs font-semibold text-white transition truncate"
                   title={downloadFileName}

@@ -84,6 +84,45 @@ export function getSessionId() {
   return sid;
 }
 
+// Persistent Enhancer Cache across page transitions and back navigation
+let enhancerCache = {
+  file: null,
+  fileName: "",
+  enableEnhance: false,
+  removeBg: false,
+  isPhoto: false,
+  outputUrl: null,
+  outputBlob: null,
+  outputDataUrl: null,
+  imageStats: null,
+};
+
+export function getEnhancerCache() {
+  return enhancerCache;
+}
+
+export function updateEnhancerCache(updates) {
+  enhancerCache = { ...enhancerCache, ...updates };
+  return enhancerCache;
+}
+
+export function clearEnhancerCache() {
+  if (enhancerCache.outputUrl && enhancerCache.outputUrl.startsWith("blob:")) {
+    URL.revokeObjectURL(enhancerCache.outputUrl);
+  }
+  enhancerCache = {
+    file: null,
+    fileName: "",
+    enableEnhance: false,
+    removeBg: false,
+    isPhoto: false,
+    outputUrl: null,
+    outputBlob: null,
+    outputDataUrl: null,
+    imageStats: null,
+  };
+}
+
 // In-Memory Transfer Bridge between DTF Enhancer and Studio (bypasses 5MB browser storage limits)
 let pendingStudioArtwork = null;
 
@@ -118,7 +157,18 @@ export function clearPendingStudioArtwork() {
   } catch (_) {}
 }
 
-// Helper to generate a fast, lightweight thumbnail (< 50KB) for collection saving
+// Active Studio Artwork state (retained across client-side route transitions)
+let activeStudioArtwork = null;
+
+export function setActiveStudioArtwork(art) {
+  activeStudioArtwork = art;
+}
+
+export function getActiveStudioArtwork() {
+  return activeStudioArtwork;
+}
+
+// Helper to generate a fast, lightweight thumbnail (< 40KB) for collection saving
 export function createThumbnailDataUrl(sourceUrlOrDataUrl, maxDim = 500, quality = 0.82) {
   if (!sourceUrlOrDataUrl) return Promise.resolve(null);
   return new Promise((resolve) => {

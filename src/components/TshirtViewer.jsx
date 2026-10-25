@@ -82,37 +82,17 @@ function ShirtModel({ color, avatar, text, font, fontSize, zone, printScale, siz
       return;
     }
     let cancelled = false;
-    let objectUrl = null;
-    fetch(avatar.imageUrl, { mode: "cors" })
-      .then((r) => {
-        if (!r.ok) throw new Error("fetch " + r.status);
-        return r.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          if (cancelled) {
-            URL.revokeObjectURL(objectUrl);
-            return;
-          }
-          URL.revokeObjectURL(objectUrl);
-          setAvatarImg(img);
-        };
-        img.onerror = () => {
-          if (objectUrl) URL.revokeObjectURL(objectUrl);
-          setAvatarImg(null);
-        };
-        img.src = objectUrl;
-      })
-      .catch(() => {
-        if (!cancelled) setAvatarImg(null);
-      });
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (!cancelled) setAvatarImg(img);
+    };
+    img.onerror = () => {
+      if (!cancelled) setAvatarImg(null);
+    };
+    img.src = avatar.imageUrl;
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [avatar?.imageUrl]);
 

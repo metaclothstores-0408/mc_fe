@@ -28,6 +28,8 @@ import {
   saveDtfGroup,
   getPendingStudioArtwork,
   clearPendingStudioArtwork,
+  getActiveStudioArtwork,
+  setActiveStudioArtwork,
   createThumbnailDataUrl
 } from "../lib/storage";
 import { computePrintWidthInches, getSheetPreset, processDtfImage } from "../lib/dtfProcessor";
@@ -156,13 +158,19 @@ export default function Studio({ addToCart, notify }) {
         notify(`Non-boxy image detected (${w}×${h}). Aligning 1:1 boxy frame.`);
       } else {
         // Balanced square image: load directly
-        applyUploadedFile(file, tempUrl);
+        applyUploadedFile(file, tempUrl, {
+          src: tempUrl,
+          file,
+          width: w,
+          height: h,
+          name: file.name
+        });
       }
     };
     img.src = tempUrl;
   };
 
-  const applyUploadedFile = (file, url) => {
+  const applyUploadedFile = (file, url, cropSource) => {
     if (uploadedObjectUrlRef.current && uploadedObjectUrlRef.current !== url) {
       URL.revokeObjectURL(uploadedObjectUrlRef.current);
     }
@@ -172,7 +180,23 @@ export default function Studio({ addToCart, notify }) {
     setArtMode("upload");
 
     const reader = new FileReader();
-    reader.onload = () => setUploadedDataUrl(reader.result);
+    reader.onload = () => {
+      const dUrl = reader.result;
+      setUploadedDataUrl(dUrl);
+      setActiveStudioArtwork({
+        url,
+        dataUrl: dUrl,
+        name: file.name,
+        cropSourceData: cropSource || {
+          src: dUrl || url,
+          file,
+          width: 1200,
+          height: 1200,
+          name: file.name
+        },
+        cropSettings: { zoom: 1, pan: { x: 0, y: 0 } }
+      });
+    };
     reader.onerror = () => setUploadedDataUrl(null);
     reader.readAsDataURL(file);
   };
@@ -186,12 +210,22 @@ export default function Studio({ addToCart, notify }) {
     uploadedObjectUrlRef.current = newUrl;
     setUploadedUrl(newUrl);
     setUploadedDataUrl(croppedDataUrl);
+    const settings = newCropSettings || cropSettings;
     if (newCropSettings) {
       setCropSettings(newCropSettings);
     }
     setSelectedDrop(null);
     setArtMode("upload");
     setIsCropModalOpen(false);
+
+    setActiveStudioArtwork({
+      url: newUrl,
+      dataUrl: croppedDataUrl,
+      name: cropSourceData.name || "cropped_artwork.png",
+      cropSourceData,
+      cropSettings: settings
+    });
+
     notify("Framed to 1:1 boxy streetwear DTF cut.");
   };
 
@@ -205,47 +239,50 @@ export default function Studio({ addToCart, notify }) {
     setProcessedUrl(null);
     setArtMode("drops");
     setActiveVersionId(null);
+    setActiveStudioArtwork(null);
   };
 
   useEffect(() => {
     // 1. Check in-memory pending artwork from DTF Enhancer (bypasses 5MB quota)
     const pending = getPendingStudioArtwork();
-    if (pending && (pending.url || pending.dataUrl || pending.blob)) {
+    if (pending && (pending.dataUrl || pending.url || pending.blob)) {
       clearPendingStudioArtwork();
-      const artUrl = pending.url || (pending.blob ? URL.createObjectURL(pending.blob) : pending.dataUrl);
-      if (uploadedObjectUrlRef.current && uploadedObjectUrlRef.current !== artUrl) {
-        URL.revokeObjectURL(uploadedObjectUrlRef.current);
-      }
-      uploadedObjectUrlRef.current = artUrl;
-      setUploadedUrl(artUrl);
+      const artDataUrl = pending.dataUrl || pending.url;
 
-      if (pending.dataUrl) {
-        setUploadedDataUrl(pending.dataUrl);
-      } else if (pending.blob) {
-        const reader = new FileReader();
-        reader.onload = () => setUploadedDataUrl(reader.result);
-        reader.readAsDataURL(pending.blob);
-      }
+      setUploadedUrl(artDataUrl);
+      setUploadedDataUrl(artDataUrl);
+      setProcessedUrl(artDataUrl);
 
       const imgName = pending.name || "enhanced_artwork.png";
-      setActiveFileName(imgName);
 
       const w = pending.width || 1200;
       const h = pending.height || 1200;
       const ratio = w / h;
 
-      // CRUCIAL: Set cropSourceData so "Adjust / Crop" works immediately!
-      setCropSourceData({
-        src: artUrl,
+      const cropSource = {
+        src: artDataUrl,
         file: pending.blob || null,
         width: w,
         height: h,
         name: imgName,
-      });
-      setCropSettings({ zoom: 1, pan: { x: 0, y: 0 } });
+      };
 
+      // Set cropSourceData so "Adjust / Crop" works immediately without refresh!
+      setCropSourceData(cropSource);
+      setCropSettings({ zoom: 1, pan: { x: 0, y: 0 } });
       setSelectedDrop(null);
       setArtMode("upload");
+
+      // Save as active studio artwork for route preservation
+      setActiveStudioArtwork({
+        url: artDataUrl,
+        dataUrl: artDataUrl,
+        name: imgName,
+        width: w,
+        height: h,
+        cropSourceData: cropSource,
+        cropSettings: { zoom: 1, pan: { x: 0, y: 0 } }
+      });
 
       if (ratio < 0.92 || ratio > 1.08) {
         setIsCropModalOpen(true);
@@ -256,7 +293,30 @@ export default function Studio({ addToCart, notify }) {
       return;
     }
 
-    // 2. Fallback: check legacy sessionStorage if present
+    // 2. Check active studio artwork (when returning from another page like shop/cart/enhancer)
+    const active = getActiveStudioArtwork();
+    if (active && active.url && !uploadedUrl) {
+      setUploadedUrl(active.url);
+      setUploadedDataUrl(active.dataUrl || active.url);
+      setProcessedUrl(active.dataUrl || active.url);
+      if (active.cropSourceData) {
+        setCropSourceData(active.cropSourceData);
+      } else {
+        setCropSourceData({
+          src: active.dataUrl || active.url,
+          file: null,
+          width: active.width || 1200,
+          height: active.height || 1200,
+          name: active.name || "artwork.png"
+        });
+      }
+      if (active.cropSettings) setCropSettings(active.cropSettings);
+      setSelectedDrop(null);
+      setArtMode("upload");
+      return;
+    }
+
+    // 3. Fallback: check legacy sessionStorage if present
     try {
       const savedArt = sessionStorage.getItem("shade_custom_artwork_data");
       if (savedArt) {
@@ -286,8 +346,8 @@ export default function Studio({ addToCart, notify }) {
 
   // Avatar/Image feed for 3D Viewer
   const viewerAvatar = (() => {
-    if (artMode === "upload" && uploadedUrl) {
-      return { id: "uploaded", title: "Custom Artwork", category: "Upload", imageUrl: processedUrl || uploadedUrl };
+    if (artMode === "upload" && (uploadedUrl || uploadedDataUrl)) {
+      return { id: "uploaded", title: "Custom Artwork", category: "Upload", imageUrl: processedUrl || uploadedDataUrl || uploadedUrl };
     }
     return null;
   })();
@@ -778,6 +838,7 @@ export default function Studio({ addToCart, notify }) {
                 previewUrl={processedUrl}
                 rawSourceUrl={uploadedDataUrl || uploadedUrl}
                 sourceLabel={cropSourceData.name || "Uploaded graphic"}
+                activeFileName={activeFileName}
                 onUpload={handleUpload}
                 onClearUpload={clearUpload}
                 uploadedUrl={uploadedUrl}

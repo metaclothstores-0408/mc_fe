@@ -51,7 +51,15 @@ export default function DtfPrintPanel(p) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; 
-      a.download = "B_AND_D_PRINT_READY_DTF.png";
+      const rawBase = (p.activeFileName || p.sourceLabel || "dtf_print")
+        .replace(/\.[^/.]+$/, "")
+        .replace(/_dtf_output.*$/i, "")
+        .replace(/_print_ready.*$/i, "")
+        .replace(/^B&D\s*/i, "")
+        .replace(/^SHADE\s*01\s*/i, "")
+        .replace(/\s+/g, "_");
+      const cleanBase = rawBase.replace(/[^a-zA-Z0-9_\-\.]/g, "_") || "dtf_print";
+      a.download = `${cleanBase}_print_ready_dtf_300dpi.png`;
       document.body.appendChild(a); 
       a.click(); 
       a.remove();
