@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Download, Loader2, Sliders, UploadCloud, X } from "lucide-react";
 import { SHEET_PRESETS, computePrintWidthInches, hexToHue, hueToHex, validateHex } from "../lib/dtfProcessor";
 import { api } from "../lib/api";
