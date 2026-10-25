@@ -157,14 +157,62 @@ export function clearPendingStudioArtwork() {
   } catch (_) {}
 }
 
-// Active Studio Artwork state (retained across client-side route transitions)
+// Active Studio Artwork state (retained across client-side route transitions and back navigation)
 let activeStudioArtwork = null;
+const STUDIO_STORAGE_META_KEY = "shade_studio_active_v1";
 
 export function setActiveStudioArtwork(art) {
   activeStudioArtwork = art;
+  try {
+    if (art) {
+      sessionStorage.setItem(
+        STUDIO_STORAGE_META_KEY,
+        JSON.stringify({
+          dtf: art.dtf,
+          cropSettings: art.cropSettings,
+          activeVersionId: art.activeVersionId,
+          name: art.name,
+          originalFilename: art.originalFilename,
+          garmentType: art.garment?.type,
+          colorHex: art.color?.hex,
+          size: art.size
+        })
+      );
+    } else {
+      sessionStorage.removeItem(STUDIO_STORAGE_META_KEY);
+    }
+  } catch (_) {}
+}
+
+export function updateActiveStudioArtwork(updates) {
+  if (!updates) {
+    setActiveStudioArtwork(null);
+    return null;
+  }
+  const merged = { ...(activeStudioArtwork || {}), ...updates };
+  setActiveStudioArtwork(merged);
+  return merged;
 }
 
 export function getActiveStudioArtwork() {
+  if (!activeStudioArtwork) {
+    try {
+      const meta = sessionStorage.getItem(STUDIO_STORAGE_META_KEY);
+      if (meta) {
+        const parsed = JSON.parse(meta);
+        activeStudioArtwork = {
+          dtf: parsed.dtf,
+          cropSettings: parsed.cropSettings,
+          activeVersionId: parsed.activeVersionId,
+          name: parsed.name,
+          originalFilename: parsed.originalFilename,
+          garmentType: parsed.garmentType,
+          colorHex: parsed.colorHex,
+          size: parsed.size
+        };
+      }
+    } catch (_) {}
+  }
   return activeStudioArtwork;
 }
 

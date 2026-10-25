@@ -12,8 +12,20 @@ export default function DtfPrintPanel(p) {
   const sheet = SHEET_PRESETS[sheetId] || SHEET_PRESETS.A3;
   const wIn = computePrintWidthInches(sheetId, scale);
 
-  // Collapsible quality settings — HIDDEN BY DEFAULT per user request
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Collapsible quality settings — preserve user's expansion state across navigation
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (p.value?.isAdvancedExpanded !== undefined) return !!p.value.isAdvancedExpanded;
+    const hasCustomKnockout = p.value?.stripColorHex && p.value.stripColorHex !== "#ffffff";
+    const hasCustomSens = p.value?.stripSensitivity !== undefined && p.value.stripSensitivity !== 30;
+    const hasCustomSoftness = p.value?.halftoneDensity !== undefined && p.value.halftoneDensity > 0;
+    return !!(hasCustomKnockout || hasCustomSens || hasCustomSoftness);
+  });
+
+  useEffect(() => {
+    if (p.value?.isAdvancedExpanded !== undefined) {
+      setIsExpanded(!!p.value.isAdvancedExpanded);
+    }
+  }, [p.value?.isAdvancedExpanded]);
 
   // Download state
   const [downloading, setDownloading] = useState(false);
@@ -248,7 +260,11 @@ export default function DtfPrintPanel(p) {
           <div className="rounded-xl border border-white/10 overflow-hidden bg-black/30">
             <button
               type="button"
-              onClick={() => setIsExpanded(v => !v)}
+              onClick={() => {
+                const next = !isExpanded;
+                setIsExpanded(next);
+                upd({ isAdvancedExpanded: next });
+              }}
               className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 transition"
             >
               <span className="flex items-center gap-2">

@@ -30,6 +30,7 @@ import {
   clearPendingStudioArtwork,
   getActiveStudioArtwork,
   setActiveStudioArtwork,
+  updateActiveStudioArtwork,
   createThumbnailDataUrl
 } from "../lib/storage";
 import { computePrintWidthInches, getSheetPreset, processDtfImage } from "../lib/dtfProcessor";
@@ -279,10 +280,12 @@ export default function Studio({ addToCart, notify }) {
         url: artDataUrl,
         dataUrl: artDataUrl,
         name: imgName,
+        originalFilename: imgName,
         width: w,
         height: h,
         cropSourceData: cropSource,
-        cropSettings: { zoom: 1, pan: { x: 0, y: 0 } }
+        cropSettings: { zoom: 1, pan: { x: 0, y: 0 } },
+        dtf
       });
 
       if (ratio < 0.92 || ratio > 1.08) {
@@ -294,24 +297,55 @@ export default function Studio({ addToCart, notify }) {
       return;
     }
 
-    // 2. Check active studio artwork (when returning from another page like shop/cart/enhancer)
+    // 2. Check active studio artwork (when returning from another page like shop/cart/enhancer or back navigation)
     const active = getActiveStudioArtwork();
-    if (active && active.url && !uploadedUrl) {
-      setUploadedUrl(active.url);
-      setUploadedDataUrl(active.dataUrl || active.url);
-      setProcessedUrl(active.dataUrl || active.url);
+    if (active && (active.url || active.dataUrl) && !uploadedUrl) {
+      const artUrl = active.url || active.dataUrl;
+      const artDataUrl = active.dataUrl || active.url;
+
+      setUploadedUrl(artUrl);
+      setUploadedDataUrl(artDataUrl);
+      setProcessedUrl(active.processedUrl || artDataUrl);
+
       if (active.cropSourceData) {
         setCropSourceData(active.cropSourceData);
       } else {
         setCropSourceData({
-          src: active.dataUrl || active.url,
+          src: artDataUrl,
           file: null,
           width: active.width || 1200,
           height: active.height || 1200,
           name: active.name || "artwork.png"
         });
       }
-      if (active.cropSettings) setCropSettings(active.cropSettings);
+
+      if (active.cropSettings) {
+        setCropSettings(active.cropSettings);
+      }
+
+      // CRITICAL: Restore every DTF setting (Vertical Placement, Knockout Color, Sensitivity, Softness, Sheet Size, Scale)!
+      if (active.dtf) {
+        setDtf(prev => ({ ...prev, ...active.dtf }));
+      }
+
+      if (active.activeVersionId) {
+        setActiveVersionId(active.activeVersionId);
+      }
+
+      if (active.garment) {
+        const matchingGarment = garmentOptions.find(g => g.type === active.garment.type) || active.garment;
+        setGarment(matchingGarment);
+      }
+
+      if (active.color) {
+        const matchingColor = colors.find(c => c.hex === active.color.hex || c.name === active.color.name) || active.color;
+        setColor(matchingColor);
+      }
+
+      if (active.size) {
+        setSize(active.size);
+      }
+
       setSelectedDrop(null);
       setArtMode("upload");
       return;
@@ -342,6 +376,39 @@ export default function Studio({ addToCart, notify }) {
       if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
     };
   }, []);
+
+  // Continuously sync all adjustments & actions to activeStudioArtwork so back/forward navigation preserves EVERYTHING
+  useEffect(() => {
+    if (artMode === "upload" && (uploadedUrl || uploadedDataUrl)) {
+      updateActiveStudioArtwork({
+        url: uploadedUrl,
+        dataUrl: uploadedDataUrl,
+        processedUrl,
+        name: cropSourceData.name || activeFileName,
+        originalFilename: activeFileName,
+        cropSourceData,
+        cropSettings,
+        dtf,
+        activeVersionId,
+        garment,
+        color,
+        size
+      });
+    }
+  }, [
+    uploadedUrl,
+    uploadedDataUrl,
+    processedUrl,
+    cropSourceData,
+    cropSettings,
+    dtf,
+    activeVersionId,
+    garment,
+    color,
+    size,
+    artMode,
+    activeFileName
+  ]);
 
   const dtfSheetVisualScale = (dtf.printScale ?? 1) * (dtf.selectedSheetPreset === "A4" ? 0.72 : 1.0);
 
