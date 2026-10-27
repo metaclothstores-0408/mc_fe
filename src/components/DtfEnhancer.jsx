@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Sparkles, 
@@ -10,13 +10,15 @@ import {
   Image as ImageIcon, 
   Zap, 
   Layers,
-  ChevronLeft
+  ChevronLeft, Lock
 } from "lucide-react";
 import { 
   getEnhancerCache, 
   updateEnhancerCache, 
-  setPendingStudioArtwork 
+  setPendingStudioArtwork,
+  getUser 
 } from "../lib/storage";
+import GuestAuthModal from "./GuestAuthModal";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -32,6 +34,7 @@ export default function DtfEnhancer() {
   const [outputDataUrl, setOutputDataUrl] = useState(cached.outputDataUrl);
   const [imageStats, setImageStats] = useState(cached.imageStats);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isGuestAuthModalOpen, setIsGuestAuthModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const originalBaseName = (file?.name || cached.fileName || "artwork").replace(/\.[^/.]+$/, "");
@@ -101,6 +104,10 @@ export default function DtfEnhancer() {
   };
 
   const handleSubmit = async () => {
+    if (!getUser()) {
+      setIsGuestAuthModalOpen(true);
+      return;
+    }
     if (!file) return;
     setLoading(true);
     setErrorMsg("");
@@ -152,6 +159,10 @@ export default function DtfEnhancer() {
   };
 
   const handleApplyToStudio = () => {
+    if (!getUser()) {
+      setIsGuestAuthModalOpen(true);
+      return;
+    }
     if (!outputUrl && !outputBlob && !outputDataUrl) return;
 
     const w = imageStats ? imageStats.width * (enableEnhance ? 4 : 1) : 1200;
@@ -215,6 +226,25 @@ export default function DtfEnhancer() {
       </div>
 
       {/* File Drop Area */}
+      {!getUser() ? (
+        <div className="rounded-2xl border-2 border-dashed border-white/20 bg-zinc-900/40 p-8 sm:p-10 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-white mb-3">
+            <Lock size={26} />
+          </div>
+          <h3 className="text-base font-bold text-white">Atelier Member Sign-In Required</h3>
+          <p className="mt-1 text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+            AI 4× Super-Resolution, automatic transparent background removal, and 300 DPI high-density rendering are reserved for registered Atelier members.
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsGuestAuthModalOpen(true)}
+            className="mt-5 px-6 py-3 rounded-xl bg-white text-black font-semibold text-xs tracking-wider uppercase hover:bg-zinc-200 transition shadow-lg inline-flex items-center gap-2"
+          >
+            <span>Sign In / Join Atelier</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      ) : (
       <div className="rounded-2xl border-2 border-dashed border-white/20 bg-zinc-900/40 p-8 sm:p-10 text-center hover:border-white/40 transition">
         <label className="flex flex-col items-center justify-center cursor-pointer group">
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/5 text-zinc-400 group-hover:text-white group-hover:bg-white/10 transition mb-3">
@@ -252,6 +282,7 @@ export default function DtfEnhancer() {
           </div>
         )}
       </div>
+      )}
 
       {/* Processing Preferences */}
       <div className="mt-6 rounded-2xl border border-white/10 bg-[#121215] p-5 sm:p-6 space-y-5">
@@ -447,6 +478,12 @@ export default function DtfEnhancer() {
           </div>
         </div>
       )}
+      <GuestAuthModal 
+        isOpen={isGuestAuthModalOpen} 
+        onClose={() => setIsGuestAuthModalOpen(false)} 
+        title="Atelier Member Required" 
+        message="AI 4× Super-Resolution, automatic background removal, and direct loading into SHADE Atelier are exclusive to registered members. Sign in to run AI enhancements."
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState, useMemo } from "react";
+﻿import { lazy, Suspense, useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Check,
@@ -11,16 +11,20 @@ import {
   X,
   Sliders,
   Crop,
-  Scale
+  Scale,
+  Lock,
+  ArrowRight
 } from "lucide-react";
 import DtfPrintPanel from "../components/DtfPrintPanel";
 import ImageCropModal from "../components/ImageCropModal";
 import DtfCollectionsModal from "../components/DtfCollectionsModal";
 import SaveToGroupModal from "../components/SaveToGroupModal";
+import GuestAuthModal from "../components/GuestAuthModal";
 import { colors, curatedDrops, garmentOptions, sizes, zones } from "../data/mock";
 import {
   money,
   getSessionId,
+  getUser,
   getDtfCollections,
   saveDtfCollectionItem,
   deleteDtfCollectionItem,
@@ -84,6 +88,9 @@ export default function Studio({ addToCart, notify }) {
   const [collections, setCollections] = useState([]);
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
   const [isSaveGroupModalOpen, setIsSaveGroupModalOpen] = useState(false);
+  const [isGuestAuthModalOpen, setIsGuestAuthModalOpen] = useState(false);
+  const [guestAuthReason, setGuestAuthReason] = useState("");
+  const [storageQuota, setStorageQuota] = useState(null);
   const [isSavingVersion, setIsSavingVersion] = useState(false);
   const [activeVersionId, setActiveVersionId] = useState(null);
 
@@ -97,18 +104,21 @@ export default function Studio({ addToCart, notify }) {
 
   // Load collections on mount (Local cache first, then sync with backend API)
   useEffect(() => {
+    const user = getUser();
+    if (!user) {
+      setCollections([]);
+      return;
+    }
     const local = getDtfCollections();
     setCollections(local);
     const sid = getSessionId();
     api.getDtfCollections(sid)
       .then(res => {
-        if (Array.isArray(res) && res.length > 0) {
+        if (Array.isArray(res)) {
           setCollections(res);
         }
       })
-      .catch(() => {
-        // Guest offline or backend unreachable; local storage suffices
-      });
+      .catch(() => {});
   }, []);
 
   // Real-time DTF image processing with debouncing
@@ -378,6 +388,15 @@ export default function Studio({ addToCart, notify }) {
     };
   }, []);
 
+  // Fetch R2 Storage Quota on load if authenticated
+  useEffect(() => {
+    if (getUser()) {
+      api.getStorageQuota()
+        .then(res => setStorageQuota(res))
+        .catch(() => {});
+    }
+  }, []);
+
   // Continuously sync all adjustments & actions to activeStudioArtwork so back/forward navigation preserves EVERYTHING
   useEffect(() => {
     if (artMode === "upload" && (uploadedUrl || uploadedDataUrl)) {
@@ -448,6 +467,11 @@ export default function Studio({ addToCart, notify }) {
 
   // Open Instagram-style Save to Collection Folder Modal
   const handleSaveVersion = () => {
+    if (!getUser()) {
+      setGuestAuthReason("Save DTF Versions & Collections");
+      setIsGuestAuthModalOpen(true);
+      return;
+    }
     if (!uploadedUrl) {
       notify("Please upload or frame a graphic before saving a version.");
       return;
@@ -480,8 +504,8 @@ export default function Studio({ addToCart, notify }) {
       collectionGroup: finalGroupName,
       originalFilename: activeFileName,
       versionNumber: nextVersionNum,
-      // Store lightweight preview to ensure instant saves without exceeding 5MB quota
-      imageDataUrl: thumbnailDataUrl,
+      // Lossless artwork streamed to Cloudflare R2 object storage
+      imageDataUrl: uploadedDataUrl || thumbnailDataUrl,
       previewDataUrl: thumbnailDataUrl,
       selectedSheetPreset: dtf.selectedSheetPreset,
       printScale: dtf.printScale ?? 1,
@@ -502,14 +526,26 @@ export default function Studio({ addToCart, notify }) {
     setActiveVersionId(versionPayload.id);
     setIsSaveGroupModalOpen(false);
 
-    // 2. Synchronize to backend database
+    // 2. Synchronize to backend database & Cloudflare R2
     try {
-      await api.saveDtfCollection(versionPayload, sid);
-    } catch {
-      // Offline / guest mode handled via local storage seamlessly
+      const savedRes = await api.saveDtfCollection(versionPayload, sid);
+      if (savedRes && (savedRes.r2ImageUrl || savedRes.imageDataUrl)) {
+        const effectiveUrl = savedRes.r2ImageUrl || savedRes.imageDataUrl;
+        versionPayload.r2ImageUrl = effectiveUrl;
+        versionPayload.imageDataUrl = effectiveUrl;
+        versionPayload.fileSizeBytes = savedRes.fileSizeBytes;
+        saveDtfCollectionItem(versionPayload);
+        setCollections(getDtfCollections());
+      }
+      notify(`Saved to Cloudflare R2: "${finalGroupName}" (${designName || `v${nextVersionNum}`})`);
+    } catch (err) {
+      console.error("Cloudflare R2 save error:", err);
+      notify("Notice: " + (err.message || "Failed to sync with cloud storage"));
     } finally {
       setIsSavingVersion(false);
-      notify(`Saved to "${finalGroupName}": ${designName || `v${nextVersionNum}`}`);
+      if (getUser()) {
+        api.getStorageQuota().then(res => setStorageQuota(res)).catch(() => {});
+      }
     }
   };
 
@@ -556,6 +592,11 @@ export default function Studio({ addToCart, notify }) {
 
   // Direct Add to Bag from Collection Version
   const handleAddToCartVersion = (item) => {
+    if (!getUser()) {
+      setGuestAuthReason("Add Saved DTF Creations to Bag");
+      setIsGuestAuthModalOpen(true);
+      return;
+    }
     handleApplyVersion(item);
     setIsCollectionsModalOpen(false);
     setIsSizeDrawerOpen(true);
@@ -573,6 +614,11 @@ export default function Studio({ addToCart, notify }) {
   };
 
   const handleOpenAdd = () => {
+    if (artMode === "upload" && !getUser()) {
+      setGuestAuthReason("Order Custom DTF Blanks");
+      setIsGuestAuthModalOpen(true);
+      return;
+    }
     setIsSizeDrawerOpen(true);
   };
 
@@ -650,18 +696,37 @@ export default function Studio({ addToCart, notify }) {
           </p>
         </div>
 
-        {/* Collections Drawer Pill Button */}
-        <button
-          type="button"
-          onClick={() => setIsCollectionsModalOpen(true)}
-          className="self-start md:self-auto flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 hover:border-white/30 transition shadow-sm"
-        >
-          <Layers size={15} className="text-zinc-300" />
-          <span>My DTF Collections</span>
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-mono font-bold">
-            {collections.length}
-          </span>
-        </button>
+        {/* Collections Drawer Pill Button & Cloud Storage Quota */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {storageQuota && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs">
+              <div className="flex flex-col text-left sm:text-right">
+                <span className="text-[10px] text-zinc-400 uppercase font-mono tracking-wider">Cloud Storage (R2)</span>
+                <span className="text-[11px] font-bold text-white font-mono">
+                  {storageQuota.usedMb} / {storageQuota.quotaMb} MB ({storageQuota.percentageUsed}%)
+                </span>
+              </div>
+              <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-300 ${storageQuota.percentageUsed > 85 ? "bg-red-500" : "bg-emerald-400"}`}
+                  style={{ width: `${Math.min(100, storageQuota.percentageUsed)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsCollectionsModalOpen(true)}
+            className="self-start md:self-auto flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 hover:border-white/30 transition shadow-sm"
+          >
+            <Layers size={15} className="text-zinc-300" />
+            <span>My DTF Collections</span>
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-mono font-bold">
+              {collections.length}
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-8 xl:grid-cols-[1.35fr_380px]">
@@ -904,7 +969,32 @@ export default function Studio({ addToCart, notify }) {
             )}
 
             {/* Custom Upload Panel with Auto-Crop, Hidden-by-Default Controls & Save Version */}
-            {artMode === "upload" && (
+            {artMode === "upload" && !getUser() && (
+              <div className="rounded-2xl border border-dashed border-white/20 bg-white/[0.02] p-8 text-center space-y-3">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-white">
+                  <Lock size={22} />
+                </div>
+                <h3 className="text-sm font-bold text-white">Atelier Member Sign-In Required</h3>
+                <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+                  Uploading custom DTF graphics, automatic knockout, 300 DPI production downloads, and cloud storage require an active Atelier account.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGuestAuthReason("Upload Custom DTF Graphics");
+                      setIsGuestAuthModalOpen(true);
+                    }}
+                    className="px-6 py-2.5 rounded-xl bg-white text-black font-semibold text-xs tracking-wider uppercase hover:bg-zinc-200 transition shadow-lg inline-flex items-center gap-2"
+                  >
+                    <span>Sign In / Join Atelier</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {artMode === "upload" && getUser() && (
               <DtfPrintPanel
                 value={dtf}
                 onChange={setDtf}
@@ -918,6 +1008,11 @@ export default function Studio({ addToCart, notify }) {
                 uploadedUrl={uploadedUrl}
                 previewDataUrl={processedUrl}
                 uploadedDataUrl={uploadedDataUrl}
+                isGuest={!getUser()}
+                onRequireAuth={(reason) => {
+                  setGuestAuthReason(reason);
+                  setIsGuestAuthModalOpen(true);
+                }}
                 onOpenCrop={() => {
                   if (cropSourceData.src) {
                     setIsCropModalOpen(true);
@@ -1075,6 +1170,14 @@ export default function Studio({ addToCart, notify }) {
         previewImage={processedUrl || uploadedDataUrl || uploadedUrl}
         onSave={handleConfirmSaveToGroup}
         isSaving={isSavingVersion}
+      />
+
+      {/* Guest Authentication Required Modal */}
+      <GuestAuthModal
+        isOpen={isGuestAuthModalOpen}
+        onClose={() => setIsGuestAuthModalOpen(false)}
+        title="Atelier Member Required"
+        message={`Please sign in or join Atelier to ${guestAuthReason || "access custom DTF actions and cloud storage"}.`}
       />
     </div>
   );

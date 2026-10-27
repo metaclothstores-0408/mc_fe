@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChart3,
   Box,
   ClipboardList,
@@ -25,6 +25,39 @@ export default function Admin() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [storageMetrics, setStorageMetrics] = useState(null);
+  const [storageLoading, setStorageLoading] = useState(false);
+  const [purgeLoading, setPurgeLoading] = useState(false);
+  const [purgeResult, setPurgeResult] = useState(null);
+
+  const loadStorageMetrics = async () => {
+    try {
+      setStorageLoading(true);
+      const data = await api.getAdminStorageMetrics();
+      setStorageMetrics(data);
+    } catch (e) {
+      console.warn("Unable to load storage telemetry:", e);
+    } finally {
+      setStorageLoading(false);
+    }
+  };
+
+  const handleRunPurge = async () => {
+    if (!window.confirm("Trigger automated lifecycle purge now? Any collections older than 14 days and production print files older than 30 days will be removed from Cloudflare R2.")) {
+      return;
+    }
+    try {
+      setPurgeLoading(true);
+      setPurgeResult(null);
+      const res = await api.runAdminStorageCleanup();
+      setPurgeResult(res);
+      await loadStorageMetrics();
+    } catch (e) {
+      window.alert("Purge failed: " + e.message);
+    } finally {
+      setPurgeLoading(false);
+    }
+  };
 
   const loadUsers = async () => {
 

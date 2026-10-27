@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+﻿import { useMemo, useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Download, Loader2, Sliders, UploadCloud, X } from "lucide-react";
 import { SHEET_PRESETS, computePrintWidthInches, hexToHue, hueToHex, validateHex } from "../lib/dtfProcessor";
 import { api } from "../lib/api";
@@ -32,6 +32,10 @@ export default function DtfPrintPanel(p) {
   const [downErr, setDownErr] = useState("");
 
   async function handleDownload() {
+    if (p.isGuest) {
+      p.onRequireAuth?.("Download Production DTF");
+      return;
+    }
     if (!p.hasSource) { setDownErr("Upload an image first."); return; }
     const maybeBlob = String(p.rawSourceUrl || "");
     if (maybeBlob.startsWith("blob:") && !p.uploadedDataUrl && !p.previewDataUrl) {
@@ -44,9 +48,21 @@ export default function DtfPrintPanel(p) {
       const effectiveSource = (srcCandidate && String(srcCandidate).startsWith("blob:")) 
         ? (p.uploadedDataUrl || p.previewDataUrl || p.previewUrl || srcCandidate) 
         : srcCandidate;
+
+      const rawBase = (p.activeFileName || p.sourceLabel || "dtf_print")
+        .replace(/\.[^/.]+$/, "")
+        .replace(/_dtf_output.*$/i, "")
+        .replace(/_print_ready.*$/i, "")
+        .replace(/^B&D\s*/i, "")
+        .replace(/^SHADE\s*01\s*/i, "")
+        .replace(/\s+/g, "_");
+      const cleanBase = rawBase.replace(/[^a-zA-Z0-9_\-\.]/g, "_") || "dtf_print";
+
       const payload = {
         original_asset_url: effectiveSource,
+        original_filename: `${cleanBase}.png`,
         dtf_print_parameters: {
+          original_filename: `${cleanBase}.png`,
           selected_sheet_preset: sheetId,
           print_width_inches: wIn,
           strip_color_hex: p.value.stripColorHex,
@@ -65,15 +81,7 @@ export default function DtfPrintPanel(p) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; 
-      const rawBase = (p.activeFileName || p.sourceLabel || "dtf_print")
-        .replace(/\.[^/.]+$/, "")
-        .replace(/_dtf_output.*$/i, "")
-        .replace(/_print_ready.*$/i, "")
-        .replace(/^B&D\s*/i, "")
-        .replace(/^SHADE\s*01\s*/i, "")
-        .replace(/\s+/g, "_");
-      const cleanBase = rawBase.replace(/[^a-zA-Z0-9_\-\.]/g, "_") || "dtf_print";
-      a.download = `${cleanBase}_print_ready_dtf_300dpi.png`;
+      a.download = `${cleanBase}_dtf_300dpi.png`;
       document.body.appendChild(a); 
       a.click(); 
       a.remove();
@@ -114,6 +122,11 @@ export default function DtfPrintPanel(p) {
               accept="image/png,image/jpeg,image/webp" 
               className="hidden" 
               onChange={e => {
+                if (p.isGuest) {
+                  e.target.value = "";
+                  p.onRequireAuth?.("Upload Artwork");
+                  return;
+                }
                 const f = e.target.files && e.target.files[0];
                 if (f) p.onUpload(f);
                 e.target.value = "";

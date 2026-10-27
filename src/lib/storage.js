@@ -1,4 +1,4 @@
-const CART_KEY = "mc_cart_v1";
+﻿const CART_KEY = "mc_cart_v1";
 const ORDERS_KEY = "mc_orders_v1";
 const USER_KEY = "mc_user_v1";
 const ACCESS_TOKEN_KEY = "accessToken";
@@ -50,6 +50,11 @@ export function saveAccessToken(token) {
 export function clearAuth() {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(DTF_COLLECTIONS_KEY);
+  localStorage.removeItem(DTF_GROUPS_KEY);
+  localStorage.removeItem("mc_enhancer_cache_v1");
+  localStorage.removeItem("mc_pending_studio_artwork_v1");
+  sessionStorage.removeItem("shade_studio_active_v1");
 }
 
 export function money(value) {
@@ -68,8 +73,7 @@ export function makeId(prefix = "MC") {
 }
 
 export function logoutUser() {
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem("accessToken");
+  clearAuth();
 }
 
 const SESSION_KEY = "mc_session_id_v1";
