@@ -684,6 +684,15 @@ export default function Studio({ addToCart, notify }) {
         }
       } catch (err) {
         console.warn("Storage upload notice during Add to Cart:", err?.message);
+        if (uploadedDataUrl && uploadedDataUrl.startsWith("data:")) {
+          try {
+            const fallbackRes = await api.uploadArtworkDataUrl(uploadedDataUrl, "custom-uploads");
+            if (fallbackRes?.url) {
+              finalCloudUrl = fallbackRes.url;
+              setCloudArtworkUrl(fallbackRes.url);
+            }
+          } catch (_) {}
+        }
       }
     }
 
@@ -708,7 +717,7 @@ export default function Studio({ addToCart, notify }) {
       sheet_width_inches: sheet.widthInches,
       sheet_height_inches: sheet.heightInches,
       source_type: "upload",
-      original_filename: originalFileName,
+      original_filename: activeFileName,
       original_asset_url: finalCloudUrl || (uploadedUrl && !uploadedUrl.startsWith("data:") && !uploadedUrl.startsWith("blob:") ? uploadedUrl : null),
       preview_data_url: finalCloudUrl || cartThumb || null,
       collar_distance_inches: dtf.collarDistanceInches ?? 2.5,

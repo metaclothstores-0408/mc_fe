@@ -272,7 +272,8 @@ deleteAdminUser: (id) =>
   // =========================
   uploadArtworkFile: async (fileOrBlob, folder = "artworks") => {
     const formData = new FormData();
-    formData.append("file", fileOrBlob);
+    const fileName = fileOrBlob.name || "artwork.png";
+    formData.append("file", fileOrBlob, fileName);
     formData.append("folder", folder);
 
     const token = localStorage.getItem("accessToken");
@@ -292,14 +293,23 @@ deleteAdminUser: (id) =>
       } catch (_) {}
       throw new Error(msg);
     }
-    return await res.json();
+    const data = await res.json();
+    if (data?.url && data.url.startsWith("/")) {
+      data.url = `${API_BASE}${data.url}`;
+    }
+    return data;
   },
 
-  uploadArtworkDataUrl: (dataUrl, folder = "artworks") =>
-    request("/api/v1/storage/upload-data-url", {
+  uploadArtworkDataUrl: async (dataUrl, folder = "artworks") => {
+    const data = await request("/api/v1/storage/upload-data-url", {
       method: "POST",
       body: JSON.stringify({ dataUrl, folder }),
-    }),
+    });
+    if (data?.url && data.url.startsWith("/")) {
+      data.url = `${API_BASE}${data.url}`;
+    }
+    return data;
+  },
 };
 
 const API_BASE_URL =
