@@ -20,6 +20,8 @@ import AdminAvatars from "./pages/admin/AdminAvatars";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GoogleOAuthCallback from "./pages/GoogleOAuthCallback";
 import DtfEnhancer from "./components/DtfEnhancer";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 export default function App() {
   const [cart, setCart] = useState(getCart());
@@ -113,6 +115,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </Layout>
