@@ -1,4 +1,4 @@
-﻿const CART_KEY = "mc_cart_v1";
+const CART_KEY = "mc_cart_v1";
 const ORDERS_KEY = "mc_orders_v1";
 const USER_KEY = "mc_user_v1";
 const ACCESS_TOKEN_KEY = "accessToken";
@@ -312,7 +312,7 @@ export function saveDtfCollectionItem(item) {
   const now = new Date().toISOString();
   
   // Ensure lightweight thumbnail payload to prevent QuotaExceededError
-  const thumb = item.thumbnailUrl || item.previewDataUrl || item.imageDataUrl;
+  const thumb = item.r2ImageUrl || item.thumbnailUrl || item.previewDataUrl || (item.imageDataUrl && item.imageDataUrl.length < 50000 ? item.imageDataUrl : null);
   const sanitizedItem = {
     ...item,
     collectionGroup: item.collectionGroup && item.collectionGroup.trim() ? item.collectionGroup.trim() : "General",

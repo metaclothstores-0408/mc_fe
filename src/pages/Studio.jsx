@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useRef, useState, useMemo } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Check,
@@ -61,6 +61,7 @@ export default function Studio({ addToCart, notify }) {
   // DTF Upload State
   const [uploadedUrl, setUploadedUrl] = useState(null);
   const [uploadedDataUrl, setUploadedDataUrl] = useState(null);
+  const [cloudArtworkUrl, setCloudArtworkUrl] = useState(null);
   const uploadedObjectUrlRef = useRef(null);
   const [dtf, setDtf] = useState({
     selectedSheetPreset: "A3",
@@ -192,6 +193,17 @@ export default function Studio({ addToCart, notify }) {
     setSelectedDrop(null);
     setArtMode("upload");
 
+    // Asynchronously stream full-resolution original to Cloudflare R2
+    if (file) {
+      api.uploadArtworkFile(file, "custom-uploads")
+        .then((res) => {
+          if (res?.url) {
+            setCloudArtworkUrl(res.url);
+          }
+        })
+        .catch((e) => console.warn("R2 upload notice:", e?.message));
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const dUrl = reader.result;
@@ -231,6 +243,17 @@ export default function Studio({ addToCart, notify }) {
     setArtMode("upload");
     setIsCropModalOpen(false);
 
+    // Stream cropped frame to Cloudflare R2
+    if (croppedBlob) {
+      api.uploadArtworkFile(croppedBlob, "custom-uploads")
+        .then((res) => {
+          if (res?.url) {
+            setCloudArtworkUrl(res.url);
+          }
+        })
+        .catch((e) => console.warn("R2 crop upload notice:", e?.message));
+    }
+
     setActiveStudioArtwork({
       url: newUrl,
       dataUrl: croppedDataUrl,
@@ -249,6 +272,7 @@ export default function Studio({ addToCart, notify }) {
     }
     setUploadedUrl(null);
     setUploadedDataUrl(null);
+    setCloudArtworkUrl(null);
     setProcessedUrl(null);
     setArtMode("drops");
     setActiveVersionId(null);
@@ -265,6 +289,9 @@ export default function Studio({ addToCart, notify }) {
       setUploadedUrl(artDataUrl);
       setUploadedDataUrl(artDataUrl);
       setProcessedUrl(artDataUrl);
+      if (pending.url && (pending.url.startsWith("http://") || pending.url.startsWith("https://"))) {
+        setCloudArtworkUrl(pending.url);
+      }
 
       const imgName = pending.name || "enhanced_artwork.png";
 
@@ -317,6 +344,9 @@ export default function Studio({ addToCart, notify }) {
       setUploadedUrl(artUrl);
       setUploadedDataUrl(artDataUrl);
       setProcessedUrl(active.processedUrl || artDataUrl);
+      if (artUrl && (artUrl.startsWith("http://") || artUrl.startsWith("https://"))) {
+        setCloudArtworkUrl(artUrl);
+      }
 
       if (active.cropSourceData) {
         setCropSourceData(active.cropSourceData);
@@ -505,8 +535,9 @@ export default function Studio({ addToCart, notify }) {
       originalFilename: activeFileName,
       versionNumber: nextVersionNum,
       // Lossless artwork streamed to Cloudflare R2 object storage
-      imageDataUrl: uploadedDataUrl || thumbnailDataUrl,
-      previewDataUrl: thumbnailDataUrl,
+      imageDataUrl: cloudArtworkUrl || uploadedDataUrl || thumbnailDataUrl,
+      previewDataUrl: cloudArtworkUrl || thumbnailDataUrl,
+      r2ImageUrl: cloudArtworkUrl || null,
       selectedSheetPreset: dtf.selectedSheetPreset,
       printScale: dtf.printScale ?? 1,
       collarDistanceInches: dtf.collarDistanceInches ?? 2.5,
@@ -570,11 +601,14 @@ export default function Studio({ addToCart, notify }) {
     });
 
     // 4. Set Image
-    const targetImg = item.previewDataUrl || item.imageDataUrl;
+    const targetImg = item.r2ImageUrl || item.previewDataUrl || item.imageDataUrl;
     if (uploadedObjectUrlRef.current) URL.revokeObjectURL(uploadedObjectUrlRef.current);
     uploadedObjectUrlRef.current = null;
     setUploadedUrl(targetImg);
     setUploadedDataUrl(targetImg);
+    if (item.r2ImageUrl) {
+      setCloudArtworkUrl(item.r2ImageUrl);
+    }
     setProcessedUrl(item.previewDataUrl || targetImg);
     setCropSourceData({
       src: targetImg,
@@ -631,6 +665,28 @@ export default function Studio({ addToCart, notify }) {
 
     const isCustomUpload = artMode === "upload" && (!!uploadedUrl || !!uploadedDataUrl);
 
+    // If R2 URL is not yet established, upload artwork now to ensure multi-device persistence
+    let finalCloudUrl = cloudArtworkUrl;
+    if (!finalCloudUrl && isCustomUpload) {
+      try {
+        if (cropSourceData?.file) {
+          const res = await api.uploadArtworkFile(cropSourceData.file, "custom-uploads");
+          if (res?.url) {
+            finalCloudUrl = res.url;
+            setCloudArtworkUrl(res.url);
+          }
+        } else if (uploadedDataUrl && uploadedDataUrl.startsWith("data:")) {
+          const res = await api.uploadArtworkDataUrl(uploadedDataUrl, "custom-uploads");
+          if (res?.url) {
+            finalCloudUrl = res.url;
+            setCloudArtworkUrl(res.url);
+          }
+        }
+      } catch (err) {
+        console.warn("Storage upload notice during Add to Cart:", err?.message);
+      }
+    }
+
     // Generate a lightweight thumbnail (<30KB) for cart & storage to prevent QuotaExceededError
     let cartThumb = null;
     const rawImage = processedUrl || uploadedDataUrl || uploadedUrl;
@@ -638,7 +694,7 @@ export default function Studio({ addToCart, notify }) {
       try {
         cartThumb = await createThumbnailDataUrl(rawImage, 300, 0.72);
       } catch (_) {
-        cartThumb = (rawImage.length > 50000) ? null : rawImage;
+        cartThumb = (rawImage && rawImage.length > 50000) ? null : rawImage;
       }
     }
 
@@ -653,8 +709,8 @@ export default function Studio({ addToCart, notify }) {
       sheet_height_inches: sheet.heightInches,
       source_type: "upload",
       original_filename: originalFileName,
-      original_asset_url: uploadedUrl && !uploadedUrl.startsWith("data:") ? uploadedUrl : null,
-      preview_data_url: cartThumb || (uploadedUrl && !uploadedUrl.startsWith("data:") ? uploadedUrl : null),
+      original_asset_url: finalCloudUrl || (uploadedUrl && !uploadedUrl.startsWith("data:") && !uploadedUrl.startsWith("blob:") ? uploadedUrl : null),
+      preview_data_url: finalCloudUrl || cartThumb || null,
       collar_distance_inches: dtf.collarDistanceInches ?? 2.5,
       print_placement: `Back DTF Centered · ${(dtf.collarDistanceInches ?? 2.5).toFixed(1)}″ below collar seam`
     } : null;
@@ -671,7 +727,7 @@ export default function Studio({ addToCart, notify }) {
       zone: zone.id,
       avatarId: null,
       avatarTitle: isCustomUpload ? "Custom Artwork" : (selectedDrop?.title || "Clean Blank"),
-      image: isCustomUpload ? (cartThumb || (uploadedUrl && !uploadedUrl.startsWith("data:") ? uploadedUrl : null)) : null,
+      image: isCustomUpload ? (finalCloudUrl || cartThumb) : null,
       customText: isCustomUpload ? "" : viewerText,
       customFont: viewerFont,
       custom: hasArt,

@@ -265,7 +265,41 @@ deleteAdminUser: (id) =>
     }),
   getStorageQuota: () => request("/api/v1/dtf-collections/storage-quota"),
   getAdminStorageMetrics: () => request("/api/v1/admin/storage/metrics"),
-  runAdminStorageCleanup: () => request("/api/v1/admin/storage/cleanup", { method: "POST" }),
+  runAdminStorageCleanup: () => request("/api/v1/admin/storage/cleanup", { method: "POST" }),
+
+  // =========================
+  // CLOUDFLARE R2 STORAGE
+  // =========================
+  uploadArtworkFile: async (fileOrBlob, folder = "artworks") => {
+    const formData = new FormData();
+    formData.append("file", fileOrBlob);
+    formData.append("folder", folder);
+
+    const token = localStorage.getItem("accessToken");
+    const headers = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/v1/storage/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      let msg = "Cloud storage upload failed";
+      try {
+        const d = await res.json();
+        msg = d.message || d.error || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return await res.json();
+  },
+
+  uploadArtworkDataUrl: (dataUrl, folder = "artworks") =>
+    request("/api/v1/storage/upload-data-url", {
+      method: "POST",
+      body: JSON.stringify({ dataUrl, folder }),
+    }),
 };
 
 const API_BASE_URL =

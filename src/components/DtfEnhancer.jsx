@@ -19,6 +19,7 @@ import {
   getUser 
 } from "../lib/storage";
 import GuestAuthModal from "./GuestAuthModal";
+import { api } from "../lib/api";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -139,18 +140,23 @@ export default function DtfEnhancer() {
       setOutputBlob(blob);
       setOutputUrl(objUrl);
 
-      // Read as DataURL for permanent safe retention across routes
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dUrl = reader.result;
-        setOutputDataUrl(dUrl);
-        updateEnhancerCache({
-          outputBlob: blob,
-          outputUrl: objUrl,
-          outputDataUrl: dUrl,
-        });
-      };
-      reader.readAsDataURL(blob);
+      // Upload directly to Cloudflare R2 for global multi-device persistence
+      let cloudUrl = null;
+      try {
+        const up = await api.uploadArtworkFile(blob, "enhanced-dtf");
+        if (up && up.url) {
+          cloudUrl = up.url;
+          setOutputUrl(cloudUrl);
+        }
+      } catch (r2Err) {
+        console.warn("Cloud R2 upload notice:", r2Err.message);
+      }
+
+      updateEnhancerCache({
+        outputBlob: blob,
+        outputUrl: cloudUrl || objUrl,
+        outputDataUrl: null,
+      });
 
     } catch (err) {
       setErrorMsg(err.message || "An unexpected error occurred during processing.");
@@ -164,37 +170,21 @@ export default function DtfEnhancer() {
       setIsGuestAuthModalOpen(true);
       return;
     }
-    if (!outputUrl && !outputBlob && !outputDataUrl) return;
+    if (!outputUrl && !outputBlob) return;
 
     const w = imageStats ? imageStats.width * (enableEnhance ? 4 : 1) : 1200;
     const h = imageStats ? imageStats.height * (enableEnhance ? 4 : 1) : 1200;
 
-    const proceed = (finalDataUrl) => {
-      setPendingStudioArtwork({
-        blob: outputBlob,
-        url: finalDataUrl || outputUrl,
-        dataUrl: finalDataUrl || outputUrl,
-        name: downloadFileName,
-        originalName: file ? file.name : "artwork.png",
-        width: w,
-        height: h,
-      });
-      navigate("/studio");
-    };
-
-    if (outputDataUrl) {
-      proceed(outputDataUrl);
-    } else if (outputBlob) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setOutputDataUrl(reader.result);
-        updateEnhancerCache({ outputDataUrl: reader.result });
-        proceed(reader.result);
-      };
-      reader.readAsDataURL(outputBlob);
-    } else {
-      proceed(outputUrl);
-    }
+    setPendingStudioArtwork({
+      blob: outputBlob,
+      url: outputUrl, // Clean Cloudflare R2 URL or local object URL
+      dataUrl: null,  // Keep memory & localStorage clean!
+      name: downloadFileName,
+      originalName: file ? file.name : "artwork.png",
+      width: w,
+      height: h,
+    });
+    navigate("/studio");
   };
 
   return (
