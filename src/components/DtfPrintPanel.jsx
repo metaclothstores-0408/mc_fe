@@ -2,8 +2,10 @@
 import { ChevronDown, ChevronUp, Download, Loader2, Sliders, UploadCloud, X } from "lucide-react";
 import { SHEET_PRESETS, computePrintWidthInches, hexToHue, hueToHex, validateHex } from "../lib/dtfProcessor";
 import { api } from "../lib/api";
+import { getUser } from "../lib/storage";
 
 export default function DtfPrintPanel(p) {
+  const user = getUser();
   const hue = useMemo(() => hexToHue(p.value.stripColorHex || "#ffffff"), [p.value.stripColorHex]);
   const valid = validateHex(p.value.stripColorHex);
   const upd = (o) => p.onChange(Object.assign({}, p.value, o));
@@ -371,22 +373,24 @@ export default function DtfPrintPanel(p) {
                   />
                 </div>
 
-                {/* Download Button */}
-                <div className="pt-2 border-t border-white/10">
-                  <button 
-                    type="button" 
-                    onClick={handleDownload} 
-                    disabled={downloading} 
-                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition disabled:opacity-50"
-                  >
-                    {downloading ? (
-                      <><Loader2 size={15} className="animate-spin" /> Generating 300 DPI PNG…</>
-                    ) : (
-                      <><Download size={15} /> Download Production DTF (300 DPI)</>
-                    )}
-                  </button>
-                  {downErr && <p className="mt-2 text-[11px] text-red-400">{downErr}</p>}
-                </div>
+                {/* Download Button (Admin Only) */}
+                {user?.role === "ADMIN" && (
+                  <div className="pt-2 border-t border-white/10">
+                    <button 
+                      type="button" 
+                      onClick={handleDownload} 
+                      disabled={downloading} 
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition disabled:opacity-50"
+                    >
+                      {downloading ? (
+                        <><Loader2 size={15} className="animate-spin" /> Generating 300 DPI PNG…</>
+                      ) : (
+                        <><Download size={15} /> Download Production DTF (300 DPI - Admin)</>
+                      )}
+                    </button>
+                    {downErr && <p className="mt-2 text-[11px] text-red-400">{downErr}</p>}
+                  </div>
+                )}
               </div>
             )}
           </div>
