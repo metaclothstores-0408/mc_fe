@@ -27,7 +27,13 @@ export default function App() {
   const [cart, setCart] = useState(getCart());
   const [user, setUser] = useState(getUser());
   const [toast, setToast] = useState("");
-  useEffect(() => saveCart(cart), [cart]);
+  useEffect(() => {
+    try {
+      saveCart(cart);
+    } catch (e) {
+      console.warn("Cart persistence error:", e);
+    }
+  }, [cart]);
   const notify = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2600);

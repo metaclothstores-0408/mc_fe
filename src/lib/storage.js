@@ -5,14 +5,36 @@ const ACCESS_TOKEN_KEY = "accessToken";
 
 export function getCart() {
   try {
-    return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+    const raw = localStorage.getItem(CART_KEY) || sessionStorage.getItem(CART_KEY) || "[]";
+    return JSON.parse(raw);
   } catch {
     return [];
   }
 }
 
 export function saveCart(cart) {
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  } catch (err) {
+    console.warn("Storage quota exceeded in saveCart. Sanitizing heavy cart payloads...", err);
+    try {
+      const sanitized = (cart || []).map((item) => ({
+        ...item,
+        image: item.image && item.image.startsWith("data:") && item.image.length > 50000 ? null : item.image,
+        dtf_print_parameters: item.dtf_print_parameters ? {
+          ...item.dtf_print_parameters,
+          preview_data_url: item.dtf_print_parameters.preview_data_url && item.dtf_print_parameters.preview_data_url.startsWith("data:") && item.dtf_print_parameters.preview_data_url.length > 50000 ? null : item.dtf_print_parameters.preview_data_url,
+          original_asset_url: item.dtf_print_parameters.original_asset_url && item.dtf_print_parameters.original_asset_url.startsWith("data:") && item.dtf_print_parameters.original_asset_url.length > 50000 ? null : item.dtf_print_parameters.original_asset_url
+        } : null
+      }));
+      localStorage.setItem(CART_KEY, JSON.stringify(sanitized));
+    } catch (e2) {
+      console.error("Critical storage failure in saveCart:", e2);
+      try {
+        sessionStorage.setItem(CART_KEY, JSON.stringify(cart));
+      } catch (_) {}
+    }
+  }
 }
 
 export function getOrders() {
@@ -24,7 +46,23 @@ export function getOrders() {
 }
 
 export function saveOrders(orders) {
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  try {
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  } catch (err) {
+    console.warn("Storage quota exceeded in saveOrders. Trimming order payloads...", err);
+    try {
+      const trimmed = (orders || []).slice(0, 20).map((o) => ({
+        ...o,
+        items: (o.items || []).map((it) => ({
+          ...it,
+          image: it.image && it.image.startsWith("data:") && it.image.length > 40000 ? null : it.image
+        }))
+      }));
+      localStorage.setItem(ORDERS_KEY, JSON.stringify(trimmed));
+    } catch (e2) {
+      console.error("Critical storage failure in saveOrders:", e2);
+    }
+  }
 }
 
 export function getUser() {

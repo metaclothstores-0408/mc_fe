@@ -622,14 +622,26 @@ export default function Studio({ addToCart, notify }) {
     setIsSizeDrawerOpen(true);
   };
 
-  const handleConfirmAddToCart = (chosenSize) => {
+  const handleConfirmAddToCart = async (chosenSize) => {
     const finalSize = chosenSize || size;
     setSize(finalSize);
 
     const sheet = getSheetPreset(dtf.selectedSheetPreset);
     const printWidthInches = computePrintWidthInches(dtf.selectedSheetPreset, dtf.printScale ?? 1);
 
-    const isCustomUpload = artMode === "upload" && !!uploadedUrl;
+    const isCustomUpload = artMode === "upload" && (!!uploadedUrl || !!uploadedDataUrl);
+
+    // Generate a lightweight thumbnail (<30KB) for cart & storage to prevent QuotaExceededError
+    let cartThumb = null;
+    const rawImage = processedUrl || uploadedDataUrl || uploadedUrl;
+    if (isCustomUpload && rawImage) {
+      try {
+        cartThumb = await createThumbnailDataUrl(rawImage, 300, 0.72);
+      } catch (_) {
+        cartThumb = (rawImage.length > 50000) ? null : rawImage;
+      }
+    }
+
     const dtf_print_parameters = isCustomUpload ? {
       selected_sheet_preset: dtf.selectedSheetPreset,
       print_width_inches: printWidthInches,
@@ -640,8 +652,9 @@ export default function Studio({ addToCart, notify }) {
       sheet_width_inches: sheet.widthInches,
       sheet_height_inches: sheet.heightInches,
       source_type: "upload",
-      original_asset_url: uploadedDataUrl || uploadedUrl,
-      preview_data_url: processedUrl || uploadedDataUrl || uploadedUrl,
+      original_filename: originalFileName,
+      original_asset_url: uploadedUrl && !uploadedUrl.startsWith("data:") ? uploadedUrl : null,
+      preview_data_url: cartThumb || (uploadedUrl && !uploadedUrl.startsWith("data:") ? uploadedUrl : null),
       collar_distance_inches: dtf.collarDistanceInches ?? 2.5,
       print_placement: `Back DTF Centered · ${(dtf.collarDistanceInches ?? 2.5).toFixed(1)}″ below collar seam`
     } : null;
@@ -658,7 +671,7 @@ export default function Studio({ addToCart, notify }) {
       zone: zone.id,
       avatarId: null,
       avatarTitle: isCustomUpload ? "Custom Artwork" : (selectedDrop?.title || "Clean Blank"),
-      image: isCustomUpload ? (processedUrl || uploadedUrl) : null,
+      image: isCustomUpload ? (cartThumb || (uploadedUrl && !uploadedUrl.startsWith("data:") ? uploadedUrl : null)) : null,
       customText: isCustomUpload ? "" : viewerText,
       customFont: viewerFont,
       custom: hasArt,
