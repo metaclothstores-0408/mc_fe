@@ -1,4 +1,4 @@
-﻿const API_BASE =
+const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   "http://localhost:8080";
 
@@ -194,6 +194,18 @@ deleteAdminUser: (id) =>
       body: JSON.stringify(data),
     }),
 
+  createPaymentOrder: (data) =>
+    request("/api/v1/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  verifyPayment: (data) =>
+    request("/api/v1/payments/verify", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   myOrders: () => request("/api/v1/orders/my-orders"),
 
   trackOrder: (id) => request(`/api/v1/orders/${id}/track`),

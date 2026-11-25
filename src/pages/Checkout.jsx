@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, LockKeyhole } from "lucide-react";
 import { getOrders, makeId, money, saveOrders } from "../lib/storage";
 import { api } from "../lib/api";
+import { loadRazorpayScript } from "../lib/razorpay";
 
 export default function Checkout({ cart, clearCart, notify }) {
   const navigate = useNavigate();
@@ -48,50 +49,93 @@ export default function Checkout({ cart, clearCart, notify }) {
       notify("Please complete all shipping fields");
       return;
     }
+
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      notify("Please sign in with Google or Phone OTP to continue checkout");
+      navigate("/signin?redirect=/checkout");
+      return;
+    }
+
     setPlacing(true);
     const payload = buildPayload();
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      try {
-        const res = await api.createOrder(payload);
-        const order = {
-          id: String(res.id),
-          orderNumber: res.orderNumber,
-          userId: "api-user",
-          totalAmount: Number(res.totalAmount),
-          status: res.status,
-          shipping: form,
-          items: cart,
-          createdAt: new Date().toISOString(),
-          apiResponse: res
-        };
-        saveOrders([order, ...getOrders()]);
-        clearCart();
-        navigate(`/orders/${order.id}`);
-        notify("Order placed — SHADE 01 Tirupur production queued");
-        return;
-      } catch (e) {
-        console.warn("Backend order failed, local fallback:", e.message);
+
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error("Razorpay gateway could not be loaded. Please check your connection.");
       }
-    }
-    setTimeout(() => {
-      const order = {
-        id: makeId("SHADE"),
-        orderNumber: `SH01${Date.now().toString().slice(-8)}`,
-        userId: "local-user",
-        totalAmount: total,
-        status: "PLACED",
-        shipping: form,
-        items: cart,
-        createdAt: new Date().toISOString(),
-        dtfPayload: payload
+
+      // 1. Initialize Razorpay order on backend
+      const initRes = await api.createPaymentOrder(payload);
+
+      // 2. Open Razorpay Standard Checkout popup
+      const options = {
+        key: initRes.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_U4S578cquj6qKR",
+        amount: initRes.amount,
+        currency: initRes.currency || "INR",
+        name: "SHADE 01",
+        description: "Custom Apparel Order · Tirupur Hub",
+        order_id: initRes.razorpayOrderId,
+        prefill: {
+          name: form.name,
+          contact: form.phone,
+        },
+        theme: {
+          color: "#09090b",
+        },
+        handler: async function (response) {
+          try {
+            // 3. Verify HMAC signature & finalize order on backend
+            const verifyRes = await api.verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            const res = verifyRes.order;
+            const order = {
+              id: String(res.id),
+              orderNumber: res.orderNumber,
+              userId: "api-user",
+              totalAmount: Number(res.totalAmount),
+              status: res.status,
+              shipping: form,
+              items: cart,
+              createdAt: new Date().toISOString(),
+              apiResponse: res,
+            };
+            saveOrders([order, ...getOrders()]);
+            clearCart();
+            navigate(`/orders/${order.id}`);
+            notify("Payment successful! SHADE 01 Tirupur production queued");
+          } catch (verifyErr) {
+            console.error("Payment verification failed:", verifyErr);
+            notify("Payment verification failed: " + verifyErr.message);
+          } finally {
+            setPlacing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setPlacing(false);
+            notify("Payment window closed");
+          },
+        },
       };
-      saveOrders([order, ...getOrders()]);
-      clearCart();
-      navigate(`/orders/${order.id}`);
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (resp) {
+        console.error("Razorpay payment failed:", resp.error);
+        notify("Payment failed: " + (resp.error.description || "Declined"));
+        setPlacing(false);
+      });
+      rzp.open();
+    } catch (e) {
+      console.warn("Payment error, falling back if offline:", e.message);
+      notify(e.message || "Failed to initiate payment");
       setPlacing(false);
-      notify("Order placed — SHADE 01 Tirupur production queued");
-    }, 500);
+    }
   };
 
   if (!cart.length) return (
@@ -174,7 +218,7 @@ export default function Checkout({ cart, clearCart, notify }) {
             onClick={place} 
             className="mc-btn-primary mt-6 w-full text-xs flex items-center justify-center gap-2"
           >
-            {placing ? "Processing..." : "Place Order (Test)"} 
+            {placing ? "Processing Payment..." : `Pay ${money(total)} via UPI / Cards`} 
             <CheckCircle2 size={16} />
           </button>
         </aside>

@@ -59,7 +59,8 @@ export default function Auth({ setUser }) {
         saveAccessToken(res.accessToken);
         saveUser(res.user);
         setUser(res.user);
-        nav("/");
+        const redirect = new URLSearchParams(location.search).get("redirect") || "/";
+        nav(redirect);
         return;
       }
     } catch (err) {
@@ -81,7 +82,8 @@ export default function Auth({ setUser }) {
     };
     saveUser(user);
     setUser(user);
-    nav("/");
+    const redirect = new URLSearchParams(location.search).get("redirect") || "/";
+    nav(redirect);
   };
 
   return (
