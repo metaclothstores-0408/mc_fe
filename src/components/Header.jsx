@@ -9,6 +9,7 @@ export default function Header({ cartCount = 0, user }) {
     ["/shop", "Collection"],
     ["/studio", "SHADE Atelier"],
     ["/enhancer", "DTF Enhancer"],
+    ["/track", "Track Order"],
     ["/orders", "Orders"]
   ];
 

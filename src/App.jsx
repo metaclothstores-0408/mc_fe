@@ -22,6 +22,7 @@ import GoogleOAuthCallback from "./pages/GoogleOAuthCallback";
 import DtfEnhancer from "./components/DtfEnhancer";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import TrackOrder from "./pages/TrackOrder";
 
 export default function App() {
   const [cart, setCart] = useState(getCart());
@@ -85,6 +86,7 @@ export default function App() {
           />
           <Route path="/orders" element={<Orders />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
+          <Route path="/track" element={<TrackOrder />} />
           <Route
             path="/profile"
             element={<Profile user={user} setUser={setUser} notify={notify} />}

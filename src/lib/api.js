@@ -208,7 +208,9 @@ deleteAdminUser: (id) =>
 
   myOrders: () => request("/api/v1/orders/my-orders"),
 
-  trackOrder: (id) => request(`/api/v1/orders/${id}/track`),
+  trackOrder: (idOrQuery) => request(`/api/v1/orders/track/${encodeURIComponent(idOrQuery)}`),
+
+  trackOrderById: (id) => request(`/api/v1/orders/${id}/track`),
 
   // DTF production asset (generated async server-side)
   getDtfAsset: (orderId, itemId) =>

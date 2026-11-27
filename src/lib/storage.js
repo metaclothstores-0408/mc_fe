@@ -388,3 +388,68 @@ export function saveDtfGroup(name) {
   }
   return getDtfGroups();
 }
+
+const SAVED_ADDRESSES_KEY = "shade_saved_addresses_v1";
+
+export function getSavedAddresses() {
+  try {
+    const raw = localStorage.getItem(SAVED_ADDRESSES_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveAddress(address) {
+  const list = getSavedAddresses();
+  const now = new Date().toISOString();
+  const id = address.id || `addr-${Date.now()}`;
+  const isDefault = !!address.isDefault || list.length === 0;
+
+  const updatedAddress = {
+    ...address,
+    id,
+    isDefault,
+    updatedAt: now,
+    createdAt: address.createdAt || now,
+  };
+
+  let newList;
+  const existingIdx = list.findIndex(a => a.id === id);
+  if (existingIdx >= 0) {
+    newList = [...list];
+    newList[existingIdx] = updatedAddress;
+  } else {
+    newList = [updatedAddress, ...list];
+  }
+
+  if (isDefault) {
+    newList = newList.map(a => a.id === id ? a : { ...a, isDefault: false });
+  }
+
+  try {
+    localStorage.setItem(SAVED_ADDRESSES_KEY, JSON.stringify(newList));
+  } catch (e) {
+    console.warn("Failed to persist address:", e);
+  }
+  return newList;
+}
+
+export function deleteAddress(id) {
+  const list = getSavedAddresses().filter(a => a.id !== id);
+  if (list.length > 0 && !list.some(a => a.isDefault)) {
+    list[0].isDefault = true;
+  }
+  try {
+    localStorage.setItem(SAVED_ADDRESSES_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn("Failed to delete address:", e);
+  }
+  return list;
+}
+
+export function getDefaultAddress() {
+  const list = getSavedAddresses();
+  return list.find(a => a.isDefault) || list[0] || null;
+}

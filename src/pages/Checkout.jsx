@@ -4,21 +4,29 @@ import { ArrowLeft, CheckCircle2, LockKeyhole } from "lucide-react";
 import { getOrders, makeId, money, saveOrders } from "../lib/storage";
 import { api } from "../lib/api";
 import { loadRazorpayScript } from "../lib/razorpay";
+import ShippingAddressManager from "../components/ShippingAddressManager";
 
 export default function Checkout({ cart, clearCart, notify }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", postalCode: "" });
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [placing, setPlacing] = useState(false);
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const change = e => setForm({ ...form, [e.target.name]: e.target.value });
 
   function buildPayload() {
+    if (!selectedAddress) return null;
+
+    const formattedAddress = [
+      selectedAddress.address,
+      selectedAddress.landmark ? `Landmark: ${selectedAddress.landmark}` : null,
+      selectedAddress.state ? selectedAddress.state : null
+    ].filter(Boolean).join(", ");
+
     return {
-      shippingName: form.name,
-      shippingPhone: form.phone,
-      shippingAddressLine: form.address,
-      city: form.city,
-      postalCode: form.postalCode,
+      shippingName: selectedAddress.name.trim(),
+      shippingPhone: selectedAddress.phone.trim(),
+      shippingAddressLine: formattedAddress,
+      city: selectedAddress.city.trim(),
+      postalCode: selectedAddress.postalCode.trim(),
       items: cart.map(i => {
         const dtf = i.dtf_print_parameters || null;
         const cfg = {
@@ -45,15 +53,8 @@ export default function Checkout({ cart, clearCart, notify }) {
 
   const place = async () => {
     if (!cart.length) return;
-    if (Object.values(form).some(v => !v.trim())) {
-      notify("Please complete all shipping fields");
-      return;
-    }
-
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      notify("Please sign in with Google or Phone OTP to continue checkout");
-      navigate("/signin?redirect=/checkout");
+    if (!selectedAddress || !selectedAddress.name || !selectedAddress.phone || !selectedAddress.address || !selectedAddress.city || !selectedAddress.postalCode) {
+      notify("Please select or add a complete delivery address");
       return;
     }
 
@@ -66,7 +67,7 @@ export default function Checkout({ cart, clearCart, notify }) {
         throw new Error("Razorpay gateway could not be loaded. Please check your connection.");
       }
 
-      // 1. Initialize Razorpay order on backend
+      // 1. Initialize Razorpay order on backend (supports both authenticated and guest phone checkouts)
       const initRes = await api.createPaymentOrder(payload);
 
       // 2. Open Razorpay Standard Checkout popup
@@ -78,8 +79,8 @@ export default function Checkout({ cart, clearCart, notify }) {
         description: "Custom Apparel Order · Tirupur Hub",
         order_id: initRes.razorpayOrderId,
         prefill: {
-          name: form.name,
-          contact: form.phone,
+          name: selectedAddress.name,
+          contact: selectedAddress.phone,
         },
         theme: {
           color: "#09090b",
@@ -100,7 +101,15 @@ export default function Checkout({ cart, clearCart, notify }) {
               userId: "api-user",
               totalAmount: Number(res.totalAmount),
               status: res.status,
-              shipping: form,
+              shipping: {
+                name: selectedAddress.name,
+                phone: selectedAddress.phone,
+                address: selectedAddress.address,
+                landmark: selectedAddress.landmark,
+                city: selectedAddress.city,
+                state: selectedAddress.state,
+                postalCode: selectedAddress.postalCode,
+              },
               items: cart,
               createdAt: new Date().toISOString(),
               apiResponse: res,
@@ -127,12 +136,12 @@ export default function Checkout({ cart, clearCart, notify }) {
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", function (resp) {
         console.error("Razorpay payment failed:", resp.error);
-        notify("Payment failed: " + (resp.error.description || "Declined"));
+        notify("Payment failed: " + (resp.error?.description || "Declined"));
         setPlacing(false);
       });
       rzp.open();
     } catch (e) {
-      console.warn("Payment error, falling back if offline:", e.message);
+      console.warn("Payment error:", e.message);
       notify(e.message || "Failed to initiate payment");
       setPlacing(false);
     }
@@ -156,25 +165,13 @@ export default function Checkout({ cart, clearCart, notify }) {
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div>
           <h1 className="text-3xl sm:text-4xl font-black text-white">Checkout</h1>
+          
           <div className="mt-8 rounded-2xl border border-white/10 bg-[#121215] p-5 sm:p-7">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 text-white font-bold text-xs">
-                01
-              </div>
-              <div>
-                <h2 className="font-semibold text-white text-sm">Shipping Information</h2>
-                <p className="text-xs text-zinc-400">Where should we deliver your SHADE 01 order?</p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field name="name" label="Full name" value={form.name} onChange={change} />
-              <Field name="phone" label="Phone number" value={form.phone} onChange={change} />
-              <div className="sm:col-span-2">
-                <Field name="address" label="Street Address" value={form.address} onChange={change} />
-              </div>
-              <Field name="city" label="City" value={form.city} onChange={change} />
-              <Field name="postalCode" label="Postal code (PIN)" value={form.postalCode} onChange={change} />
-            </div>
+            <ShippingAddressManager
+              selectedAddress={selectedAddress}
+              onSelectAddress={setSelectedAddress}
+              notify={notify}
+            />
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-[#121215] p-5 text-xs text-zinc-400">
@@ -213,6 +210,14 @@ export default function Checkout({ cart, clearCart, notify }) {
             <span>Total</span>
             <span>{money(total)}</span>
           </div>
+
+          {selectedAddress && (
+            <div className="mt-4 p-3 rounded-xl border border-white/10 bg-white/5 text-[11px] text-zinc-300">
+              <span className="text-zinc-500 font-mono block text-[10px] uppercase font-bold mb-1">Delivering to:</span>
+              <span className="font-semibold text-white">{selectedAddress.name}</span> · {selectedAddress.city}, {selectedAddress.postalCode}
+            </div>
+          )}
+
           <button 
             disabled={placing} 
             onClick={place} 
@@ -224,14 +229,5 @@ export default function Checkout({ cart, clearCart, notify }) {
         </aside>
       </div>
     </div>
-  );
-}
-
-function Field({ label, name, value, onChange }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-medium text-zinc-400">{label}</span>
-      <input required name={name} value={value} onChange={onChange} className="mc-input text-xs" />
-    </label>
   );
 }
