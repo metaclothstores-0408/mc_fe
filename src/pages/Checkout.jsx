@@ -87,9 +87,10 @@ export default function Checkout({ cart, clearCart, notify }) {
         },
         handler: async function (response) {
           try {
+            console.log("Razorpay payment modal success:", response);
             // 3. Verify HMAC signature & finalize order on backend
             const verifyRes = await api.verifyPayment({
-              razorpayOrderId: response.razorpay_order_id,
+              razorpayOrderId: response.razorpay_order_id || initRes.razorpayOrderId,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             });
@@ -116,8 +117,8 @@ export default function Checkout({ cart, clearCart, notify }) {
             };
             saveOrders([order, ...getOrders()]);
             clearCart();
-            navigate(`/orders/${order.id}`);
             notify("Payment successful! SHADE 01 Tirupur production queued");
+            navigate(`/orders/${order.id}`);
           } catch (verifyErr) {
             console.error("Payment verification failed:", verifyErr);
             notify("Payment verification failed: " + verifyErr.message);
