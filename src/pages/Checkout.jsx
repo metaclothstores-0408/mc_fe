@@ -40,7 +40,7 @@ export default function Checkout({ cart, clearCart, notify }) {
         };
         if (dtf) cfg.dtf_print_parameters = dtf;
         return {
-          productVariantId: i.productVariantId || i.variantId || 401,
+          productVariantId: i.productVariantId || i.variantId || 1,
           avatarId: typeof i.avatarId === "number" ? i.avatarId : null,
           quantity: i.quantity || 1,
           unitPrice: i.price,
